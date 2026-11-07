@@ -1,7 +1,29 @@
+import datetime
 import os
 import re
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
+
+
+def _mentions(text: str, words: List[str]) -> bool:
+    """Whole-word keyword match, so "pro" does not match "protobuf"."""
+    return any(re.search(rf"\b{re.escape(w)}\b", text) for w in words)
+
+
+TECH_LABELS = {
+    "grpc": "gRPC",
+    "rest": "REST",
+    "postgresql": "PostgreSQL",
+    "clickhouse": "ClickHouse",
+    "database": "Database",
+    "storage": "Storage",
+    "authentication": "Authentication",
+    "cache": "Cache",
+    "kafka": "Kafka",
+    "redis": "Redis",
+    "mongodb": "MongoDB",
+    "graphql": "GraphQL",
+}
 
 
 @dataclass
@@ -49,23 +71,22 @@ class ADREngine:
             if any(w in lower for w in ["need to", "problem", "currently", "challenge", "facing", "requirement", "decide on", "goal"]):
                 context_parts.append(f"{sender}: {text}")
                 # Infer topic
-                for tech in ["database", "storage", "authentication", "cache", "kafka", "redis", "postgresql", "clickhouse", "grpc", "rest"]:
-                    if tech in lower and tech not in topic_candidates:
-                        topic_candidates.append(tech.capitalize())
+                for tech in TECH_LABELS:
+                    if re.search(rf"\b{re.escape(tech)}\b", lower) and tech not in topic_candidates:
+                        topic_candidates.append(tech)
 
             # Identify Decision / Proposed Solution
-            if any(w in lower for w in ["propose", "recommend", "should use", "we use", "go with", "decided to", "choose", "decision", "selected"]):
-                decision_parts.append(f"{sender}: {text}")
-            elif any(w in lower for w in ["mature", "best choice", "handles our", "supports"]):
-                if not decision_parts:
-                    decision_parts.append(f"{sender}: {text}")
+            if _mentions(lower, ["propose", "recommend", "should use", "we use", "we will use", "go with", "decided to", "decision is", "selected", "let's use", "lets use"]):
+                decision_parts.append(text)
+            elif not decision_parts and _mentions(lower, ["best choice", "handles our"]):
+                decision_parts.append(text)
 
             # Identify Positive consequences / Pros
-            if any(w in lower for w in ["pro", "advantage", "benefit", "upside", "good because", "strength", "fast", "mature"]):
+            if _mentions(lower, ["pro", "pros", "advantage", "advantageous", "benefit", "benefits", "upside", "good because", "strength", "fast", "mature", "performance", "cheap"]):
                 positives.append(text)
 
             # Identify Negative consequences / Cons / Trade-offs
-            if any(w in lower for w in ["con", "drawback", "downside", "risk", "disadvantage", "challenge", "tuning", "cost", "overhead"]):
+            if _mentions(lower, ["con", "cons", "drawback", "drawbacks", "downside", "risk", "disadvantage", "challenge", "challenges", "tuning", "cost", "costs", "overhead", "trade-off", "tradeoff", "trade-offs", "harder"]):
                 negatives.append(text)
 
             # Identify Alternatives
@@ -84,7 +105,8 @@ class ADREngine:
 
         # Synthesize Title
         if topic_candidates:
-            title = f"Selection of {' & '.join(topic_candidates[:2])} for System Architecture"
+            labels = [TECH_LABELS.get(t, t.capitalize()) for t in topic_candidates[:2]]
+            title = f"Selection of {' & '.join(labels)} for System Architecture"
         elif decision_parts:
             first_line = decision_parts[0].split("\n")[0]
             first_line = re.sub(r"^[A-Za-z0-9_-]+:\s*", "", first_line)
@@ -117,14 +139,28 @@ class ADREngine:
         return proposal
 
     def refine_with_answers(self, proposal: ADRProposal, user_answers: Dict[str, str]) -> ADRProposal:
-        """Refines the proposal with team answers from chat."""
+        """Refines the proposal with team answers from chat.
+
+        The answer text is classified first, so a single reply like
+        "our rollback is X" fills the rollback slot even when the agent asked
+        several questions at once.
+        """
         for question, answer in user_answers.items():
             clean_ans = answer.strip()
             if not clean_ans:
                 continue
 
+            ans_lower = clean_ans.lower()
             q_lower = question.lower()
-            if "rollback" in q_lower or "failure" in q_lower:
+            if any(k in ans_lower for k in ["rollback", "fall back", "fallback", "revert", "failover", "fail over"]):
+                proposal.rollback_plan = clean_ans
+            elif any(k in ans_lower for k in ["trade-off", "tradeoff", "drawback", "downside", "overhead", "cost", "risk"]):
+                if clean_ans not in proposal.consequences_negative:
+                    proposal.consequences_negative.append(clean_ans)
+            elif any(k in ans_lower for k in ["benefit", "advantage", "faster", "cheaper", "velocity", "frees us"]):
+                if clean_ans not in proposal.consequences_positive:
+                    proposal.consequences_positive.append(clean_ans)
+            elif "rollback" in q_lower or "failure" in q_lower or "mitigation" in q_lower:
                 proposal.rollback_plan = clean_ans
             elif "drawback" in q_lower or "trade-off" in q_lower or "negative" in q_lower:
                 proposal.consequences_negative.append(clean_ans)
@@ -150,7 +186,7 @@ class ADREngine:
 
 * **Status:** {proposal.status}
 * **Deciders:** Engineering Team (via Switch Room)
-* **Date:** 2026-11-07
+* **Date:** {datetime.date.today().isoformat()}
 
 ## Context and Problem Statement
 {proposal.context}
@@ -175,7 +211,7 @@ Chosen option: **{proposal.decision}**
 *Generated collaboratively by Switch ADR Architect Agent.*
 """
 
-    def update_adr_index(self, docs_dir: str, adr_id: int, title: str, filename: str) -> None:
+    def update_adr_index(self, docs_dir: str, adr_id: int, title: str, filename: str, status: str = "Accepted") -> None:
         """Updates docs/adr/README.md with the new entry."""
         index_file = os.path.join(docs_dir, "adr", "README.md")
         os.makedirs(os.path.dirname(index_file), exist_ok=True)
@@ -190,7 +226,7 @@ Chosen option: **{proposal.decision}**
         with open(index_file, "r", encoding="utf-8") as f:
             content = f.read()
 
-        row = f"| ADR-{adr_id:04d} | {title} | Accepted | [{filename}]({filename}) |\n"
+        row = f"| ADR-{adr_id:04d} | {title} | {status} | [{filename}]({filename}) |\n"
         if f"ADR-{adr_id:04d}" not in content:
             with open(index_file, "a", encoding="utf-8") as f:
                 f.write(row)
