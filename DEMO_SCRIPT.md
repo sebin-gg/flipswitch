@@ -1,8 +1,9 @@
-# 🎬 Switch ADR Architect — Demo Video Script (75 Seconds)
+# 🎬 Switch ADR Architect — Demo Video Scripts (30s, 60s, 75s)
 
 > **Target Duration:** 60–90 seconds  
 > **Resolution:** 1080p (1920x1080) or 2K  
 > **Audio:** Clear voiceover / narration  
+> **Rendered cuts:** 30s (social) and 60s (portal), both captioned; the 75s shot list below is for a live recording.  
 
 ---
 
@@ -53,6 +54,9 @@ arrives at ~19s, and the end card starts at 25.7s.
 | **0:21.2** | MADR preview in the terminal | *"Read it straight from git."* | 5 |
 | **0:25.7** | End card | *"Chat in, committed decision out. Switch carries the workflow."* | 10 |
 
+That table is for the 29.9s cut (`flipswitch-demo.mp4`). The longer 60s cut has its own script and
+timings in the next section.
+
 Runtime is about 2.2 words per second with deliberate silence between lines, so there is no need
 to rush — if a line feels tight, drop a word rather than speeding up.
 
@@ -63,9 +67,57 @@ to rush — if a line feels tight, drop a word rather than speeding up.
 3. If the ADR number on screen differs from `0002`, say "the record" instead of the number.
 4. Mux the take without re-encoding the picture:
    `ffmpeg -i flipswitch-demo.mp4 -i voice.wav -c:v copy -c:a aac -b:a 128k -shortest narrated.mp4`
-5. The 60-second cut (`flipswitch-demo-60s.mp4`) has the same beats at different times — 3.0s intro,
-   debate from ~7s, invocation ~28s, preview ~44s, end card ~53.5s — so these lines still fit, but
-   each needs a longer gap.
+5. The 60-second cut is narrated already and has its own timings — see the section below.
+
+---
+
+## 🎬 The 60-second cut: chapters, captions, narration
+
+`demo_video/flipswitch-demo-60s-narrated.mp4` is the portal cut: **60.000s**, 1800 frames at 30 fps,
+with the five step captions burned in and a voiceover underneath. It is also published as a release
+asset: <https://github.com/sebin-gg/flipswitch/releases/tag/demo-video>.
+
+Chapter times, measured from the rendered file (caption band changes plus the end-card fade):
+
+| Time | Beat |
+|:---:|:---|
+| 0:00–0:03.0 | Title card |
+| 0:03.3 | **1/5** bridge up, agent joins `#architecture-review` |
+| 0:06.9 | **2/5** the team debates Postgres/TimescaleDB vs ClickHouse |
+| 0:27.9 | **3/5** `@architect` is invoked |
+| 0:39.9 | **4/5** the clarification question (missing rollback plan) |
+| 0:42.1 | **5/5** reply lands, ADR written and committed |
+| ~0:44.2 | MADR preview scrolls past |
+| 0:53.7 | End card |
+
+### Spoken lines
+
+Each line starts on its beat; end times are the actual clip lengths, so the gaps are deliberate.
+
+| Start | Ends | On screen | Say |
+|:---:|:---:|:---|:---|
+| **0:00.4** | 0:04.4 | Title card, agent boots | *"Most architecture decisions are made in chat, then quietly forgotten."* |
+| **0:07.0** | 0:11.4 | Step 1/5, room joined | *"This is Switch A-D-R Architect, an agent that joins the room instead."* |
+| **0:12.5** | 0:17.8 | Step 2/5, debate opens | *"The team is choosing a primary database: Postgres with Timescale, or ClickHouse."* |
+| **0:19.2** | 0:24.8 | Debate continues | *"They weigh maturity against operational overhead, out loud, where the agent can hear it."* |
+| **0:28.2** | 0:32.3 | Step 3/5, invoked | *"Invoked in the thread, it reads the room's context through Switch."* |
+| **0:33.6** | 0:38.8 | Draft, then 4/5 at 0:39.9 | *"It drafts the decision, then refuses to record it until the rollback plan exists."* |
+| **0:42.3** | 0:47.1 | Step 5/5, write + commit | *"Bob answers. The A-D-R is written, indexed, and committed to git."* |
+| **0:47.6** | 0:53.0 | MADR preview | *"No dashboard, no separate tool: the decision is now a reviewed file in the repo."* |
+| **0:54.0** | 0:57.7 | End card | *"Chat in, committed decision out. Switch carries the workflow."* |
+
+Step 4/5 lands at 0:39.9 with no narration over it: the previous line has already set the question
+up, and letting it sit reads better than talking across it.
+
+### Voice and mix notes
+
+- The shipped voice is synthesized (Edge `en-US-AndrewNeural`, +4% rate): 48 kHz mono AAC, **−16.3 LUFS**
+  integrated, true peak limited, 0.8s fade-out.
+- "A-D-R" and "Timescale" are spelled that way so the synthesizer pronounces them cleanly; the screen
+  still shows `ADR` and `TimescaleDB`.
+- To record a human take, keep the start times above and read at roughly 2.2 words/second. Mux without
+  touching the picture: `ffmpeg -i flipswitch-demo-60s.mp4 -i voice.wav -c:v copy -c:a aac -b:a 160k
+  -shortest narrated.mp4` — the silent cut is the same 60.000s timeline.
 
 ---
 
