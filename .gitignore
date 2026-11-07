@@ -6,7 +6,7 @@ __pycache__/
 .venv/
 env/
 venv/
-test_sandbox/
+test_sandbox*/
 .pytest_cache/
 .coverage
 htmlcov/

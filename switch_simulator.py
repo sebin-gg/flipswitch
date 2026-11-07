@@ -118,9 +118,9 @@ class SwitchHandler(BaseHTTPRequestHandler):
             self.respond(404, {"error": "Not Found", "path": self.path})
 
     def handle_heartbeat(self, agent_id):
-        content_length = int(self.headers.get("Content-Length", 0))
-        if content_length > 0:
-            self.rfile.read(content_length)
+        # read_json_body (not a raw rfile read) so subclasses can inspect the
+        # payload first and still let the request complete exactly once.
+        self.read_json_body()
         self.respond(200, {"ok": True, "rooms": list(rooms.keys()), "cursor": 100})
 
     def handle_stream(self, agent_id):
