@@ -91,7 +91,11 @@ def run_demo_conversation(room_id: str, repo_dir: str) -> bool:
         for name in new_files:
             path = adr_dir / name
             print(f"\n--- Preview: {name} ---")
-            print(path.read_text(encoding="utf-8")[:500] + "\n...")
+            preview = path.read_text(encoding="utf-8")
+            if len(preview) > 820:
+                # Cut on a line boundary so the demo never shows a chopped word.
+                preview = preview[:820].rsplit("\n", 1)[0] + "\n..."
+            print(preview)
     else:
         print("❌ No new ADR was generated. Check the agent output above.")
         return False
