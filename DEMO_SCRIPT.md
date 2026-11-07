@@ -35,6 +35,40 @@ If `ADR_API_KEY` is set, the agent prints `smart model gpt-4.1 @ ...`; otherwise
 
 ---
 
+## 🎧 Narration for the rendered cut (`demo_video/flipswitch-demo.mp4`)
+
+The rendered cut runs **29.9s** and already carries five burned-in step captions, so these lines
+say what the captions don't rather than reading them aloud. Timecodes were measured from the
+file on disk: caption steps change at 4.6s, 6.4s, 12.8s, 14.6s and 16.4s, the ADR preview
+arrives at ~19s, and the end card starts at 25.7s.
+
+| Start | On screen | Say | Words |
+|:---:|:---|:---|:---:|
+| **0:00.0** | Title card | *"Most architecture decisions die in a chat thread."* | 7 |
+| **0:02.6** | Agent boots, joins the room | *"This agent joins the room and listens."* | 7 |
+| **0:06.6** | Alice, Bob and Charlie debate | *"The team weighs Postgres and TimescaleDB against ClickHouse."* | 8 |
+| **0:12.8** | `@architect` is invoked | *"@architect is invoked to draft the ADR."* | 7 |
+| **0:15.4** | The clarification question | *"First it asks for the missing rollback plan."* | 8 |
+| **0:17.4** | Reply lands, file written, commit made | *"Bob answers, and the record is written and committed."* | 10 |
+| **0:21.2** | MADR preview in the terminal | *"Read it straight from git."* | 5 |
+| **0:25.7** | End card | *"Chat in, committed decision out. Switch carries the workflow."* | 10 |
+
+Runtime is about 2.2 words per second with deliberate silence between lines, so there is no need
+to rush — if a line feels tight, drop a word rather than speeding up.
+
+**Recording notes**
+1. Record in one pass against the video playing muted; a phone mic in a quiet room is fine.
+2. Keep the gaps: the pauses at ~0:09 (debate), ~0:13 (invocation) and ~0:24 (preview) are what
+   make it feel like a walkthrough instead of an auctioneer.
+3. If the ADR number on screen differs from `0002`, say "the record" instead of the number.
+4. Mux the take without re-encoding the picture:
+   `ffmpeg -i flipswitch-demo.mp4 -i voice.wav -c:v copy -c:a aac -b:a 128k -shortest narrated.mp4`
+5. The 60-second cut (`flipswitch-demo-60s.mp4`) has the same beats at different times — 3.0s intro,
+   debate from ~7s, invocation ~28s, preview ~44s, end card ~53.5s — so these lines still fit, but
+   each needs a longer gap.
+
+---
+
 ## 🎙️ Recording Tips
 1. Split terminal or window: Left side team chat (live Mattermost or `python main.py --simulate`), Right side VS Code / file explorer showing `docs/adr/`.
 2. When the agent answers and commits, highlight the new file appearing in the explorer.
