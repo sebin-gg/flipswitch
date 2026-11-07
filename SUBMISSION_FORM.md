@@ -22,7 +22,7 @@ It is a team tool: engineering workflow, Git-native records, B2B framing.
 
 Public. `README.md` §5 covers Switch setup end to end (registration, room UUID, run command)
 and links [`docs/LIVE_SWITCH_SETUP.md`](docs/LIVE_SWITCH_SETUP.md) for a live bridge.
-[`switch-template.yaml`](switch-template.yaml) installs the agent from Switch Console.
+[`switch-template.yaml`](switch-template.yaml) describes the agent, its room and its addressing policy for a Console install.
 
 ## 4. Demo video link
 
@@ -40,26 +40,33 @@ Both are **60.000s**, 1800 frames, 1280×720, captioned. Release page:
 ## 5. What the project does, who it's for
 
 Turns a team's architecture debate in chat into a committed MADR record. The agent joins the room
-through Switch, reads the discussion, notices what chat always skips — the rollback plan, the
-trade-offs, the rejected alternatives — asks for it in-thread, then writes the ADR into `docs/adr/`
-and commits it to git.
+through Switch, reads the discussion, then checks the decision against the guardrails chat usually
+skips: no rollback or mitigation plan, no stated trade-offs, no evidence for the benefits it claims.
+It asks for whatever is missing in the thread, waits for a teammate, and only then writes the ADR
+into `docs/adr/` and commits it to git. Alternatives the team mentioned are recorded with the rest —
+it does not prompt for those yet.
 
-Built for engineering teams, tech leads and platform/infrastructure groups who make decisions in
-Slack, Mattermost or Discord but rarely write ADRs, and who want the decision to survive the
-conversation without adopting another documentation tool.
+Built for engineering teams, tech leads and platform/infrastructure groups who decide in Slack,
+Mattermost or Discord but rarely write ADRs, and who want the decision to outlive the conversation
+without adopting another documentation tool.
 
 ## 6. Agent + chat platform connected via Switch
 
-**Custom Python agent — not Claude Code or Codex.** It speaks Switch's protocol directly (SSE
-`/events`, heartbeat, `connect_to_room`, `read_context`, `post_message`) and installs with
-`provider: custom`/`python` in `switch-template.yaml`.
+**Custom Python agent — not Claude Code or Codex.** It speaks Switch's protocol directly: SSE
+`/agents/{id}/events` with `Last-Event-ID` resume, a 2s heartbeat, and the `connect_to_room`,
+`read_context`, `post_message` and `list_rooms` operations.
 
-**Chat side: Mattermost** (Switch's bundled bridge); the same agent code runs unchanged on Slack,
-Discord or Teams, because Switch owns the channel integration.
+**Chat side: Mattermost** (the bridge bundled with Switch) is the documented target. There is no
+channel-specific code in the agent — the Python sources contain no Slack/Discord/Mattermost/Teams
+strings at all — so the room's channel comes entirely from whichever bridge Switch is running.
 
-Honest caveat: no hosted Switch instance was available, so the shipped demo runs against an embedded
-Switch-compatible bridge — same protocol, zero setup. The live Mattermost path is documented and the
-client is protocol-complete, but it was not recorded against a hosted bridge.
+Honest caveat: no hosted Switch instance was available, so the recorded demo runs against the repo's
+embedded Switch-compatible bridge. The client implements the documented operations end to end, but
+it was not recorded against a hosted room; `docs/LIVE_SWITCH_SETUP.md` covers that path.
+
+Also note: `switch-template.yaml` describes the agent, room and addressing policy for a Console
+install with a selectable runtime (`custom`/`python` among them); it does not launch this Python
+client, which is started separately against the bridge.
 
 ## 7. What I liked about Switch / what I'd improve
 
@@ -69,8 +76,9 @@ client is protocol-complete, but it was not recorded against a hosted bridge.
   terminal-bound agents structurally cannot do.
 * A small, readable HTTP surface. SSE with cursor resume, a 2s heartbeat, and four ops calls were
   enough to build a real client without an SDK.
-* Addressing as a first-class concept (owner-only → `anyone_in` room), and declarative install via
-  `switch-template.yaml`, so a repo can ship a working agent instead of a setup README.
+* Addressing as a first-class concept (owner-only → `anyone_in` room), and declarative room +
+  agent setup in `switch-template.yaml`: addressing, channel type and kickoff message are
+  configuration, not prose.
 * Channel-agnostic by construction: the agent code never mentions Mattermost, Slack or Discord.
 
 **Would improve**
@@ -79,8 +87,9 @@ client is protocol-complete, but it was not recorded against a hosted bridge.
   matching the display name, and finding a room's UUID only via `list_rooms`.
 * The silent trap: new agents start owner-only, so a connected agent looks broken because it ignores
   teammates until addressing is widened. Surface that in the install output.
-* Ship a reference mock bridge. We wrote a strict simulator (with op-argument validation) to test
-  offline; every team will otherwise write their own.
+* Ship a reference mock bridge. We wrote one — an embedded bridge plus a strict test harness that
+  rejects unexpected operation arguments — because testing against a live room was the slowest part
+  of the loop; every team will otherwise write their own.
 * Tighter error bodies, and a state table for heartbeat 404/409 plus reconnect/cursor handling.
 
 ---
