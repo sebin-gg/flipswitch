@@ -1,87 +1,138 @@
-# 📝 Hackathon Submission Form Details
+# 📝 Hackathon Submission — Portal Answers
 
-Use the sections below to complete your submission on the WeMakeDevs / DevTools Academy portal.
-
----
-
-### Project Name
-**Switch ADR Architect: Multiplayer Architecture Decision Records in Team Chat**
-
-### Track
-* **Best Business Workflow**
-
-### Tagline / 1-Sentence Pitch
-> Turns casual engineering debates in Slack, Discord, and Mattermost into authoritative, peer-reviewed Git Architecture Decision Records (ADRs) using Switch.
+Copy-paste source for the WeMakeDevs / DevTools Academy submission form.
 
 ---
 
-### Short Project Description (under 250 words)
+## 1. Project title
 
-Engineering teams discuss architecture, databases, and API choices in team chat every day, but formal Architecture Decision Records (ADRs) are rarely written. Context evaporates, trade-offs are forgotten, and rollback strategies are never documented.
+**Switch ADR Architect — Multiplayer Architecture Decision Records in Team Chat**
 
-**Switch ADR Architect** bridges this gap by bringing an AI architect directly into team chat rooms via **Switch**. When invoked (`@architect summarize and draft ADR`), the agent reads the conversation through Switch's `read_context` operation, synthesizes the debate, and detects architectural gaps — a missing rollback plan, unstated maintenance trade-offs, or an unexamined alternative.
+One-line description: *A Switch agent that turns team chat debates into committed Git ADRs.*
 
-The agent asks clarifying questions in the thread and waits for a teammate. Once answered, it generates a standard MADR 3.0 record, updates `docs/adr/README.md`, and commits the decision to Git with a clean conventional commit. A smarter LLM-backed engine handles synthesis when an API key is configured; a deterministic offline engine keeps the demo and tests reproducible with zero setup.
+## 2. Track
 
-Switch is the indispensable core: it supplies the room topology, addressing, shared multi-human context, and the operations the agent acts through. Without Switch this would be another single-user terminal tool rather than a multiplayer teammate.
+**Business Workflow**
+
+It is a team tool: engineering workflow, Git-native records, B2B framing.
+
+## 3. Repo link
+
+**<https://github.com/sebin-gg/flipswitch>**
+
+Public. `README.md` §5 covers Switch setup end to end (registration, room UUID, run command)
+and links [`docs/LIVE_SWITCH_SETUP.md`](docs/LIVE_SWITCH_SETUP.md) for a live bridge.
+[`switch-template.yaml`](switch-template.yaml) installs the agent from Switch Console.
+
+## 4. Demo video link
+
+Published as public release assets on the repo (no login, direct playback):
+
+* Music version — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-demo-60s-music.mp4>
+* Narration only — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-demo-60s-narrated.mp4>
+
+Both are **60.000s**, 1800 frames, 1280×720, captioned. Release page:
+<https://github.com/sebin-gg/flipswitch/releases/tag/demo-video>.
+
+> **If the form requires YouTube/Loom:** upload `demo_video/flipswitch-demo-60s-music.mp4`
+> (already 60s, under 3 min) as unlisted and paste that link instead.
+
+## 5. What the project does, who it's for
+
+Turns a team's architecture debate in chat into a committed MADR record. The agent joins the room
+through Switch, reads the discussion, notices what chat always skips — the rollback plan, the
+trade-offs, the rejected alternatives — asks for it in-thread, then writes the ADR into `docs/adr/`
+and commits it to git.
+
+Built for engineering teams, tech leads and platform/infrastructure groups who make decisions in
+Slack, Mattermost or Discord but rarely write ADRs, and who want the decision to survive the
+conversation without adopting another documentation tool.
+
+## 6. Agent + chat platform connected via Switch
+
+**Custom Python agent — not Claude Code or Codex.** It speaks Switch's protocol directly (SSE
+`/events`, heartbeat, `connect_to_room`, `read_context`, `post_message`) and installs with
+`provider: custom`/`python` in `switch-template.yaml`.
+
+**Chat side: Mattermost** (Switch's bundled bridge); the same agent code runs unchanged on Slack,
+Discord or Teams, because Switch owns the channel integration.
+
+Honest caveat: no hosted Switch instance was available, so the shipped demo runs against an embedded
+Switch-compatible bridge — same protocol, zero setup. The live Mattermost path is documented and the
+client is protocol-complete, but it was not recorded against a hosted bridge.
+
+## 7. What I liked about Switch / what I'd improve
+
+**Liked**
+
+* Agents as first-class room members. One agent, several humans, shared context — the thing
+  terminal-bound agents structurally cannot do.
+* A small, readable HTTP surface. SSE with cursor resume, a 2s heartbeat, and four ops calls were
+  enough to build a real client without an SDK.
+* Addressing as a first-class concept (owner-only → `anyone_in` room), and declarative install via
+  `switch-template.yaml`, so a repo can ship a working agent instead of a setup README.
+* Channel-agnostic by construction: the agent code never mentions Mattermost, Slack or Discord.
+
+**Would improve**
+
+* Docs friction that cost real time: registration token vs agent API key, the returned `id` not
+  matching the display name, and finding a room's UUID only via `list_rooms`.
+* The silent trap: new agents start owner-only, so a connected agent looks broken because it ignores
+  teammates until addressing is widened. Surface that in the install output.
+* Ship a reference mock bridge. We wrote a strict simulator (with op-argument validation) to test
+  offline; every team will otherwise write their own.
+* Tighter error bodies, and a state table for heartbeat 404/409 plus reconnect/cursor handling.
 
 ---
 
-### How Switch is Used
+## Supporting detail for judges
 
-* **SSE downstream**: `GET /agents/{id}/events` with a client-generated connection id, `scope=all`, and cursor resume via `Last-Event-ID`.
-* **Heartbeat and liveness**: `POST /agents/{id}/connection/beat` every 2 seconds; a 404/409 reopens the stream per the protocol.
+### How Switch is used
+
+* **SSE downstream**: `GET /agents/{id}/events` with a client-generated connection id, `scope=all`,
+  and cursor resume via `Last-Event-ID`.
+* **Heartbeat and liveness**: `POST /agents/{id}/connection/beat` every 2 seconds; a 404/409 reopens
+  the stream per the protocol.
 * **Room claim**: `connect_to_room` resolves the room and binds subsequent operations to it.
-* **Context retrieval**: `read_context` returns the room's thread-shaped timeline; the agent flattens it and analyzes the discussion.
-* **Bi-directional interaction**: `post_message` asks clarifying questions and reports the committed ADR in-thread.
+* **Context retrieval**: `read_context` returns the room's thread-shaped timeline; the agent flattens
+  it and analyzes the discussion.
+* **Bi-directional interaction**: `post_message` asks clarifying questions and reports the committed
+  ADR in-thread.
 * **Declarative template**: `switch-template.yaml` installs the agent from Switch Console.
 
----
+### Tech stack
 
-### Tech Stack
-* **Switch** (open-source AI teammate infrastructure by SandboxAQ)
-* **Python 3.10+** (`requests` SSE client, threading, `http.server` mock bridge)
+* **Switch** (open-source AI teammate infrastructure by SandboxAQ) — spoken as a protocol client
+* **Python 3.11–3.13** (`requests` pinned to 2.34.2, threading, `http.server` mock bridge)
 * **MADR 3.0** (Markdown Architectural Decision Records)
 * **Git** (autonomous repository version control)
-* **OpenAI-compatible LLM** (optional smart synthesis; heuristic fallback)
-* **Supported chat apps**: Mattermost, Slack, Discord, Microsoft Teams
+* **OpenAI-compatible LLM** (optional smart synthesis; deterministic heuristic fallback)
+* **GitHub Actions** CI: test matrix on 3.11/3.12/3.13 plus a demo smoke run
 
----
-
-### How to Run (for judges)
+### How to run (for judges)
 
 ```bash
 git clone https://github.com/sebin-gg/flipswitch.git
 cd flipswitch
 pip install -r requirements.txt
 python main.py --simulate          # embedded Switch bridge + full demo, no Docker/Postgres
-python -m unittest test_e2e.py -v  # 6 tests incl. protocol + duplicate-ADR guards
+python -m unittest test_e2e.py -v  # 6 tests incl. protocol contract + duplicate-ADR guards
 ```
 
-Expected: the demo prints the room conversation, the agent's clarifying question, the teammate's rollback answer, and a new MADR file committed to `docs/adr/`.
+Expected: the demo prints the room conversation, the agent's clarifying question, the teammate's
+rollback answer, and a new MADR file committed to `docs/adr/`.
 
----
-
-### Public Repository
-* GitHub: `https://github.com/sebin-gg/flipswitch`
-
-### Demo Video Link
-* **TODO before submitting:** record `python main.py --simulate` (or the live Mattermost room) and paste the YouTube/Loom link here.
-* Script and shot list: [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md)
-
----
-
-### Judging Alignment
+### Judging alignment
 
 | Criterion | Where it shows |
 |:--|:--|
 | Switch centrality (30%) | SSE `/events`, heartbeat, `connect_to_room`, `read_context`, `post_message`; no fallback bot API |
-| Technical execution / reproducibility (25%) | 3 passing E2E tests, zero-dependency simulator, portable test sandbox, graceful LLM fallback |
+| Technical execution / reproducibility (25%) | 6 passing E2E tests, CI on three Python versions, zero-dependency simulator, graceful LLM fallback |
 | Creativity / impact (25%) | Turns ephemeral chat consensus into durable, indexed, versioned architecture memory |
-| Presentation / docs (20%) | README architecture + protocol notes, 75-second demo script, blog post |
+| Presentation / docs (20%) | README architecture + protocol notes, 30s/60s narrated demo cuts, blog post |
 
----
+### Optional side tracks
 
-### Optional Side Tracks
 * **Blog**: [`BLOG_POST.md`](BLOG_POST.md) → publish and submit the link.
-* **#HowISwitch post**: draft around the "chat is where decisions happen, Git is where they survive" angle and link the repo + blog.
+* **#HowISwitch post**: draft around the "chat is where decisions happen, Git is where they survive"
+  angle and link the repo + blog.
