@@ -206,15 +206,118 @@ the rollback question — a MADR file under `docs/adr/` and a
 
 ---
 
+## 7. Custom clients, bridged channels, and addressing policy
+
+Steps 1–6 assume a provider agent and a room that already exists. A custom
+client (like this one) and a room that starts life as a Mattermost channel need
+three extra moves; each one was verified against a standalone stack.
+
+### 7.1 `register-known` only accepts provider slugs
+
+`agent_type` on `/agents/register-known` is the AI provider (`claude`, `codex`,
+`gemini`, `cursor`, `copilot`, `opencode`, `qwen`, `unknown`, …), **not** the
+connection style. Sending `always_on` there returns:
+
+```json
+{"detail": "Unknown agent type: always_on"}
+```
+
+`always_on` is a `connection_model` inside `integration_profile`, which is why a
+custom client registers through the generic endpoint instead.
+
+### 7.2 Register a custom client with `POST /agents`
+
+Same registration token as §1, different body:
+
+```bash
+curl -s -X POST "$BRIDGE_URL/agents" \
+  -H "Authorization: Bearer $AGENT_REGISTRATION_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "name": "architect",
+        "description": "ADR Architect",
+        "connector_type": "custom",
+        "integration_profile": {
+          "connection_model": "always_on",
+          "message_exchange": true,
+          "pre_invocation_mediation": [],
+          "post_invocation_mediation": [],
+          "event_reporting": []
+        },
+        "metadata": {"client": "flipswitch"}
+      }'
+# -> {"id":"<uuid>","api_key":"<shown once>"}
+```
+
+Keep using the returned `id` (a UUID), not the name, in every `/agents/{id}/...`
+call.
+
+### 7.3 Give the room a chat channel
+
+Switch rooms are created and bridged by the chat side. On a standalone stack the
+bundled Mattermost bridge only mirrors a channel once its bot account is a
+member, so a channel created after boot has no room — `list_rooms` shows Town
+Square and Off-Topic but not yours.
+
+Add the bridge's bot and the agent's own bot account to the channel (Mattermost
+admin: **Channel menu → Add members**, or `POST /api/v4/channels/{channel_id}/members`
+with `{"user_id": ...}`). The bridge then creates a room named
+`Mattermost: <Channel Display Name>` within seconds, and the agent is assigned
+to it automatically:
+
+```text
+Mattermost: Town Square -> b58cf246-…
+Mattermost: Off-Topic   -> f5e9da80-…
+Mattermost: Architecture Review -> 971d0d25-…
+```
+
+Re-run `list_rooms` (§4) for the UUID. A 400 `Not connected to a room` from
+`read_context`/`post_message` means `connect_to_room` has not succeeded yet —
+the client now waits for the stream and retries the claim instead of racing it.
+
+### 7.4 Open the addressing policy
+
+A newly registered agent is **owner-only**: teammates get a refusal posted back
+into the room.
+
+```text
+@user You're not permitted to direct messages to me in this room — my operator
+has restricted who can address me here.
+```
+
+Clear the policy with the Gateway API. On the standalone stack the Gateway
+serves its API under `/gateway` (nginx proxies that prefix to `switch:8000`; the
+site root is the SPA and answers `405` on `/auth/login`):
+
+```bash
+GW="http://localhost:3000/gateway"
+curl -s -c cookies.txt -X POST "$GW/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$GATEWAY_ADMIN_EMAIL\",\"password\":\"$GATEWAY_ADMIN_PASSWORD\"}"
+
+# policy: null clears it, so anyone in the room may address the agent
+curl -s -b cookies.txt -X PUT "$GW/agents/$SWITCH_AGENT_ID/addressing-policy" \
+  -H 'Content-Type: application/json' -d '{"policy":null}'
+```
+
+`GET $GW/agents/$SWITCH_AGENT_ID` then reports `"addressing_policy": null` and
+the agent answers the next mention. Clearing is demo-friendly; in a shared server
+prefer a scoped policy (rooms / users) so the agent is not open to everyone.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause |
+|:--|:--|
 |:--|:--|
 | `401` from `/agents/register-known` | You used an API key where a registration token is required |
 | `409` from `/agents/register-known` | Name already registered; pick another name, or overwrite (which rotates the key and breaks the old one) |
 | `403` on `connect_to_room` | The agent is not a member of that room |
 | `404` on an operation | Wrong `--agent-id`; use the `id` returned at registration |
-| Agent online, never answers | Owner-only addressing policy, an unclaimed platform account, or a message that never says `@architect` |
+| Agent online, never answers | Owner-only addressing policy (§7.4), an unclaimed platform account, or a message that never says `@architect` |
+| Bot replies `You're not permitted to direct messages to me` | Default owner-only addressing policy; clear or scope it (§7.4) |
+| `Unknown agent type` on `/agents/register-known` | You sent a connection model; provider slugs only (§7.1) |
 | Two agents fight / repeated evictions | Two processes using the same agent id or connection id; run one |
 | Stream opens but no messages | The claim did not happen; check the `connect_to_room` line at startup. History is read with `read_context`, and events before the claim are not replayed |
 | `room_id must be a UUID` style `400` | You passed a room name to a room-bound operation; pass the UUID from step 4 |
