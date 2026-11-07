@@ -110,7 +110,11 @@ class ADREngine:
         elif decision_parts:
             first_line = decision_parts[0].split("\n")[0]
             first_line = re.sub(r"^[A-Za-z0-9_-]+:\s*", "", first_line)
-            title = first_line[:60] if len(first_line) > 10 else "System Architecture Decision"
+            if len(first_line) > 10:
+                # Cut on a word boundary: "... mature operators, pl" reads like a bug.
+                title = first_line[:60].rsplit(" ", 1)[0].rstrip(" .,:;") or first_line[:60]
+            else:
+                title = "System Architecture Decision"
         else:
             title = "System Architecture Decision"
 
