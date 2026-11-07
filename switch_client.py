@@ -35,9 +35,13 @@ class SwitchAgentClient:
         self.cursor = 0
         self.running = False
         self.on_message_callback = None
+        self.last_op_error = None
         self._sse_session = None
         self._heartbeat_thread = None
         self._sse_thread = None
+        # Set once the bridge has accepted the SSE request. Operations that
+        # need an open connection (connect_to_room) fail with 409 before this.
+        self._stream_ready = threading.Event()
 
     # ------------------------------------------------------------------ auth
     def _headers(self) -> dict:
@@ -53,10 +57,18 @@ class SwitchAgentClient:
         try:
             resp = requests.post(url, json=args or {}, headers=self._headers(), timeout=15)
             if resp.status_code != 200:
+                detail = ""
+                try:
+                    detail = str(resp.json().get("detail", ""))
+                except Exception:
+                    detail = resp.text[:200]
+                self.last_op_error = f"{resp.status_code}: {detail}".strip()
                 return None
+            self.last_op_error = None
             data = resp.json()
             return data.get("result", data) if isinstance(data, dict) else data
-        except Exception:
+        except Exception as exc:
+            self.last_op_error = f"transport: {exc}"
             return None
 
     # ------------------------------------------------------------- heartbeat
@@ -115,6 +127,7 @@ class SwitchAgentClient:
                     self._sse_url(), headers=headers, params=params, stream=True, timeout=60
                 ) as resp:
                     resp.raise_for_status()
+                    self._stream_ready.set()
 
                     current_event = None
                     current_data = []
@@ -224,11 +237,25 @@ class SwitchAgentClient:
                 return candidate.get("id", room)
         return room
 
-    def connect_to_room(self, room_id: str) -> dict:
+    def connect_to_room(self, room_id: str, timeout: float = 15.0) -> dict:
+        """Claim the room, retrying while the bridge still considers the
+        connection unopened (409) or not yet registered.
+
+        The claim is the one operation whose failure makes every later op fail
+        with "Not connected to a room", so it raises instead of returning {}.
+        """
         resolved = self.resolve_room_id(room_id)
-        result = self._op("connect_to_room", {"room_id": resolved}) or {}
-        self.connected_room_id = resolved
-        return result
+        deadline = time.monotonic() + timeout
+        while True:
+            result = self._op("connect_to_room", {"room_id": resolved})
+            if result is not None:
+                self.connected_room_id = resolved
+                return result
+            error = self.last_op_error or "no response"
+            retryable = error.startswith("409") or error.startswith("transport")
+            if not retryable or time.monotonic() >= deadline:
+                raise RuntimeError(f"connect_to_room({resolved}) failed: {error}")
+            time.sleep(0.5)
 
     @staticmethod
     def _normalize_message(item: dict) -> dict:
@@ -251,13 +278,16 @@ class SwitchAgentClient:
         }
 
     # ------------------------------------------------------------- lifecycle
-    def start(self):
+    def start(self, wait_for_stream: float = 10.0):
         if self.running:
             return
         self.running = True
         self._start_heartbeat()
         self._sse_thread = threading.Thread(target=self._handle_sse_stream, daemon=True)
         self._sse_thread.start()
+        # The bridge only accepts a claim from an open connection, so give the
+        # stream a moment to register instead of racing it.
+        self._stream_ready.wait(timeout=wait_for_stream)
 
     def stop(self):
         self.running = False

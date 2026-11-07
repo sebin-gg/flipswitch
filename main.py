@@ -168,7 +168,12 @@ def main():
 
     # Connect to room and start SSE stream
     client.start()
-    client.connect_to_room(args.room)
+    try:
+        client.connect_to_room(args.room)
+    except RuntimeError as exc:
+        print(f"❌ Could not claim room: {exc}")
+        print("   Check that the agent is a member of the room and that --room is its UUID.")
+        sys.exit(1)
     print(f"🤖 ADR Architect Agent connected to Switch ({args.bridge_url}) and listening in {args.room}")
     print(f"🧠 ADR engine: {engine.describe()}\n")
 
