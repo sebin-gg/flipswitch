@@ -43,19 +43,22 @@ say what the captions don't rather than reading them aloud. Timecodes were measu
 file on disk: caption steps change at 4.6s, 6.4s, 12.8s, 14.6s and 16.4s, the ADR preview
 arrives at ~19s, and the end card starts at 25.7s.
 
-| Start | On screen | Say | Words |
-|:---:|:---|:---|:---:|
-| **0:00.0** | Title card | *"Most architecture decisions die in a chat thread."* | 7 |
-| **0:02.6** | Agent boots, joins the room | *"This agent joins the room and listens."* | 7 |
-| **0:06.6** | Alice, Bob and Charlie debate | *"The team weighs Postgres and TimescaleDB against ClickHouse."* | 8 |
-| **0:12.8** | `@architect` is invoked | *"@architect is invoked to draft the ADR."* | 7 |
-| **0:15.4** | The clarification question | *"First it asks for the missing rollback plan."* | 8 |
-| **0:17.4** | Reply lands, file written, commit made | *"Bob answers, and the record is written and committed."* | 10 |
-| **0:21.2** | MADR preview in the terminal | *"Read it straight from git."* | 5 |
-| **0:25.7** | End card | *"Chat in, committed decision out. Switch carries the workflow."* | 10 |
+The narrated version ships as `demo_video/flipswitch-demo-30s-narrated.mp4` (29.9s, synthesized
+voice, no music bed — the 60s cut is the scored one).
 
-That table is for the 29.9s cut (`flipswitch-demo.mp4`). The longer 60s cut has its own script and
-timings in the next section.
+| Start | Ends | On screen | Say |
+|:---:|:---:|:---|:---|
+| **0:00.4** | 0:02.9 | Title card | *"Most architecture decisions die in chat."* |
+| **0:03.3** | 0:05.9 | Agent boots, joins the room | *"This agent joins the room and listens."* |
+| **0:06.6** | 0:10.0 | Alice, Bob and Charlie debate | *"The team weighs Postgres and Timescale against ClickHouse."* |
+| **0:12.9** | 0:16.5 | `@architect` invoked, then the question | *"Architect is invoked, and it asks for a rollback plan first."* |
+| **0:16.7** | 0:19.8 | Reply lands, file written, commit made | *"Bob answers. The record is written and committed."* |
+| **0:20.3** | 0:25.2 | MADR preview in the terminal | *"Status, consequences, rollback: the whole decision, straight from git."* |
+| **0:25.8** | 0:29.4 | End card | *"Chat in, committed decision out. Switch carries the workflow."* |
+
+The invocation and the clarification question are only 1.8s apart in this cut, so they share one
+line; the earlier split version needed a 1.22x tempo squeeze on both. The longer 60s cut has its own
+script and timings in the next section.
 
 Runtime is about 2.2 words per second with deliberate silence between lines, so there is no need
 to rush — if a line feels tight, drop a word rather than speeding up.
