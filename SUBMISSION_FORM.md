@@ -26,16 +26,16 @@ and links [`docs/LIVE_SWITCH_SETUP.md`](docs/LIVE_SWITCH_SETUP.md) for a live br
 
 ## 4. Demo video link
 
-Published as public release assets on the repo (no login, direct playback):
+**No public link yet — the video is kept local only** (`demo_video/` is gitignored, not published
+as a release asset). Upload one file and paste the link here before submitting:
 
-* Music version — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-demo-60s-music.mp4>
-* Narration only — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-demo-60s-narrated.mp4>
+* `demo_video/flipswitch-demo-60s-music.mp4` — **60.000s**, 1800 frames, 1280×720, captions,
+  narration + quiet music bed (the recommended upload)
+* `demo_video/flipswitch-demo-60s-narrated.mp4` — same cut, narration only
+* `demo_video/flipswitch-demo-30s-narrated.mp4` — 29.9s cut, narration only, for social
 
-Both are **60.000s**, 1800 frames, 1280×720, captioned. Release page:
-<https://github.com/sebin-gg/flipswitch/releases/tag/demo-video>.
-
-> **If the form requires YouTube/Loom:** upload `demo_video/flipswitch-demo-60s-music.mp4`
-> (already 60s, under 3 min) as unlisted and paste that link instead.
+YouTube → Upload → Visibility **Unlisted** is the fastest route; Google Drive with
+"anyone with the link" or Loom also work.
 
 ## 5. What the project does, who it's for
 
