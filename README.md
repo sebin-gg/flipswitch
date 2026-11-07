@@ -10,6 +10,17 @@
 
 ---
 
+## 🎬 60-second demo
+
+[▶ Watch the demo](https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-demo-60s-music.mp4) — 60s, captioned, 1280×720, narration with a quiet music bed.
+A narration-only cut and the release notes are on the [demo-video release](https://github.com/sebin-gg/flipswitch/releases/tag/demo-video).
+
+It is a real run of `python main.py --simulate`: the team debates Postgres vs ClickHouse in
+`#architecture-review`, `@architect` is invoked, the agent asks for the missing rollback plan, then
+writes the ADR and commits it to git. No Docker, no API key, no hosted Switch instance required.
+
+---
+
 ## 💡 The Problem
 
 Engineering teams make critical architectural decisions every day in chat channels (Mattermost, Slack, Discord). They debate databases, caching strategies, messaging queues, and authentication schemes.
@@ -24,7 +35,7 @@ Traditional ADR tools require developers to leave chat, open a terminal, remembe
 
 1. **Ambient Room Awareness**: The agent sits in `#architecture-review` alongside engineers via Switch.
 2. **Context Synthesis**: When tagged (`@architect summarize and draft an ADR`), the agent reads the room's timeline through Switch's `read_context` operation.
-3. **Guardrail Gap Detection**: It detects missing architectural requirements — **rollback strategies**, **operational trade-offs**, and **unexamined alternatives**.
+3. **Guardrail Gap Detection**: It detects missing architectural requirements — **rollback strategies** and **operational trade-offs** — and records any alternatives the team raised in the thread.
 4. **Chat-Native Clarification**: It asks clarifying questions directly in the chat thread and waits for a teammate's answer.
 5. **Autonomous Git Persistence**: Once clarified or approved, it compiles an official [MADR 3.0](https://adr.github.io/madr/) document, updates `docs/adr/README.md`, and commits the decision directly to Git.
 6. **Smarter synthesis**: ADR text is produced by an LLM through any OpenAI-compatible endpoint when `ADR_API_KEY` is set. Without a key — or if the provider fails — the agent degrades to a deterministic keyword engine, so the demo and tests never require network access.

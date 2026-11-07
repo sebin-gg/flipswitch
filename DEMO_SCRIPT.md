@@ -77,8 +77,9 @@ to rush — if a line feels tight, drop a word rather than speeding up.
 ## 🎬 The 60-second cut: chapters, captions, narration
 
 `demo_video/flipswitch-demo-60s-music.mp4` is the portal cut: **60.000s**, 1800 frames at 30 fps,
-with the five step captions burned in, a voiceover underneath, and a quiet music bed. It is kept
-local (gitignored) and uploaded by hand for submission — the repo carries no video binary.
+with the five step captions burned in, a voiceover underneath, and a quiet music bed. It is
+published as a release asset: <https://github.com/sebin-gg/flipswitch/releases/tag/demo-video>
+(the repo itself carries no video binary).
 
 `flipswitch-demo-60s-narrated.mp4` is the same cut without the bed; `flipswitch-demo-60s.mp4` is
 silent, for recording your own voiceover.
