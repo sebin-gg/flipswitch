@@ -1,0 +1,75 @@
+version: 2
+params:
+  name:
+    type: string
+    label: Agent name
+    description: How the agent is shown to people in team chat.
+    default: ADR Architect
+  start_in:
+    type: enum
+    enum: [nowhere, new_room, existing_room]
+    label: Start it in
+    default: new_room
+  existing_room:
+    type: room
+    label: Which room
+    if: "{start_in} == existing_room"
+  bridge:
+    type: bridge
+    label: Messaging app
+    description: Where the new room is created (Mattermost, Slack, Discord).
+    default: [Mattermost, Slack, Discord, $first]
+    required: false
+  provider:
+    type: provider
+    description: Agent runtime.
+    default: [custom, python, antigravity, codex, claude]
+    input: advanced
+  directory:
+    type: directory
+    description: Repository working directory where docs/adr/ is maintained.
+    default: "{$agents_dir}/{architect.name}"
+    input: advanced
+
+form:
+  advanced: { label: Advanced, open: false }
+
+resources:
+  architect:
+    type: agent
+    display_name: "{name}"
+    description: >-
+      Collaborative Architecture Decision Record (ADR) agent. Listens in team chat
+      rooms, analyzes architectural debates, identifies missing rollback and trade-off
+      strategies, asks the team clarifying questions, and commits MADR 3.0 records
+      into git docs/adr/.
+    instructions: |
+      You are the team's ADR Architect. Whenever engineers debate system architecture,
+      databases, APIs, caching, or tech stack choices, summarize consensus, detect
+      missing trade-offs (rollback plan, negative consequences, alternatives), ask
+      clarifying questions directly in the chat room, and commit accepted MADR-compliant
+      markdown records into docs/adr/.
+    provider: "{provider}"
+    directory: "{directory}"
+    join: ["{existing_room}"]
+    addressing:
+      - if: "{start_in} == new_room"
+        value: { anyone_in: [architecture_room] }
+      - value: anyone
+
+  architecture_room:
+    type: room
+    if: "{start_in} == new_room"
+    name: "Architecture & ADRs"
+    description: >-
+      Team room for debating system architecture, tech stack decisions, and recording
+      ADRs collaboratively with the ADR Architect agent.
+    channel_type: channel_public
+    bridge: "{bridge}"
+    agents: [architect]
+    instructions: |
+      This room is for discussing engineering architecture decisions. Debate tech choices
+      freely with colleagues, then mention @architect to summarize, clarify trade-offs,
+      and commit accepted ADRs to git.
+    kickoff: |
+      @architect is active in this room. Discuss your architectural decisions here, then type `@architect summarize and create ADR` when ready.
