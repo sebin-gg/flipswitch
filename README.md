@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Switch Agent Protocol](https://img.shields.io/badge/Switch-Agent%20Protocol-FF895E)](https://github.com/sandbox-quantum/switch)
 [![MADR Standard](https://img.shields.io/badge/Standard-MADR%203.0-blue)](https://adr.github.io/madr/)
-[![Tests](https://img.shields.io/badge/Tests-3%20passing-brightgreen)](test_e2e.py)
+[![Tests](https://img.shields.io/badge/Tests-6%20passing-brightgreen)](test_e2e.py)
 
 ---
 
@@ -123,9 +123,10 @@ flipswitch/
 ├── agent_orchestrator.py     # Multi-turn state machine, gap loop, Git persistence
 ├── adr_engine.py             # MADR 3.0 renderer + deterministic keyword analysis
 ├── llm_engine.py             # Smart LLM-backed analysis with heuristic fallback
-├── test_e2e.py               # End-to-end test suite (3 tests)
+├── test_e2e.py               # End-to-end, protocol contract, duplicate-guard suite (6 tests)
 ├── requirements.txt          # requests>=2.31.0
 ├── .env.example              # Optional smart-model configuration
+├── docs/LIVE_SWITCH_SETUP.md # Register an agent + find the room UUID on a real server
 └── docs/adr/                 # Generated ADRs + auto-generated index
 ```
 
@@ -167,24 +168,39 @@ python main.py --simulate
 Check which engine is active with `python main.py --list-models`. Force the offline engine with `--no-llm` (useful for judging and CI). See `.env.example`.
 
 ### 5. Connect to a live Switch instance
-1. Open **Switch Console** and connect your Mattermost/Slack/Discord bridge, or self-host the Switch core.
-2. Create a room (for example `Architecture & ADRs`) and make sure the agent account is a **member** of it.
-3. Register the agent once and keep the returned API key:
+Full walkthrough, including the exact `curl` calls and troubleshooting:
+**[docs/LIVE_SWITCH_SETUP.md](docs/LIVE_SWITCH_SETUP.md)**. The short version:
+
+1. Point at the **agent bridge** base URL (switch-core), not the Gateway UI, and confirm it:
+   ```bash
+   curl -s "$BRIDGE_URL/health"   # 200 = right base URL, 401 = right host/wrong path
+   ```
+2. Register the agent once with a registration token (not an API key). The
+   returned `api_key` is shown **once**, and the returned `id` — not the name —
+   is what goes in `--agent-id`:
    ```bash
    curl -X POST "$BRIDGE_URL/agents/register-known" \
-     -H "Authorization: Bearer $REGISTRATION_TOKEN" \
+     -H "Authorization: Bearer $AGENT_REGISTRATION_TOKEN" \
      -H "Content-Type: application/json" \
-     -d '{"agent_type":"always_on","name":"architect","description":"ADR Architect"}'
+     -d '{"agent_type":"always_on","name":"architect","description":"ADR Architect","options":{}}'
    ```
-4. Run the agent against the bridge (not the Gateway) base URL:
+3. Add the agent to the room, and widen **who can talk to it** — new agents
+   start owner-only and will otherwise ignore teammates.
+4. Read the room UUID from the agent's own room list (only rooms it belongs to):
    ```bash
-   python main.py --bridge-url "$BRIDGE_URL" --agent-id architect \
-     --api-key "$SWITCH_AGENT_KEY" --room "<room-uuid-or-name>"
+   curl -s -X POST "$BRIDGE_URL/agents/$SWITCH_AGENT_ID/ops/list_rooms" \
+     -H "Authorization: Bearer $SWITCH_AGENT_KEY" \
+     -H "Content-Type: application/json" -d '{}'
+   # -> {"result":[{"room_id":"<uuid>","name":"...",...}]}
    ```
-   The client resolves a room name to its id via `list_rooms`; a room UUID is the most reliable value.
-5. In the room, debate a decision and mention `@architect summarize and draft an ADR`.
+5. Run it (a room name also works, but a UUID survives a rename):
+   ```bash
+   python main.py --bridge-url "$BRIDGE_URL" --agent-id "$SWITCH_AGENT_ID" \
+     --api-key "$SWITCH_AGENT_KEY" --room "<room-uuid>"
+   ```
+6. In the room, debate a decision and mention `@architect summarize and draft an ADR`.
 
-The agent claims the room with `connect_to_room`, so `post_message` and `read_context` operate on that room implicitly, exactly as the Switch operations API expects.
+The agent claims the room with `connect_to_room`, so `post_message` and `read_context` operate on that room implicitly, exactly as the Switch operations API expects. Run one instance per agent id: a second claim takes the room over and the two evict each other.
 
 ### 6. Or install it from the Switch template
 1. Open **Switch Console** → **Agents** → **Install Template**.
@@ -202,10 +218,12 @@ Covers:
 1. Bridge health and connection.
 2. Full flow: discussion → gap question → teammate answer → MADR file → index update → git commit.
 3. Smart-engine fallback when no API key exists and when the provider is unreachable.
+4. Protocol contract: a strict bridge rejects any operation argument outside the published signature (no `room_id` on `post_message`, no `room_id` on named-room context reads) and asserts the client streams from `GET /agents/{id}/events`, never the legacy `/stream` path.
+5. Duplicate guard: after a decision is recorded, follow-up chatter in the same thread creates no new ADR file or commit (it replies “already recorded”), while an explicit `@architect new ADR ...` still records a new decision.
 
 Expected:
 ```text
-Ran 3 tests in ~7s
+Ran 6 tests in ~14s
 OK
 ```
 

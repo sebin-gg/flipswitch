@@ -10,7 +10,7 @@
 
 ```bash
 pip install -r requirements.txt
-python -m unittest test_e2e.py -v   # confirm 3/3 green
+python -m unittest test_e2e.py -v   # confirm 6/6 green
 python main.py --list-models        # show heuristic or smart model
 ```
 

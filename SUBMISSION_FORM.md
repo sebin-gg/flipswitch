@@ -55,7 +55,7 @@ git clone https://github.com/sebin-gg/flipswitch.git
 cd flipswitch
 pip install -r requirements.txt
 python main.py --simulate          # embedded Switch bridge + full demo, no Docker/Postgres
-python -m unittest test_e2e.py -v  # 3 end-to-end tests
+python -m unittest test_e2e.py -v  # 6 tests incl. protocol + duplicate-ADR guards
 ```
 
 Expected: the demo prints the room conversation, the agent's clarifying question, the teammate's rollback answer, and a new MADR file committed to `docs/adr/`.
