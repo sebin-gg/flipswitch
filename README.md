@@ -140,6 +140,7 @@ flipswitch/
 ├── test_e2e.py               # End-to-end, protocol contract, duplicate-guard suite (6 tests)
 ├── requirements.txt          # requests>=2.31.0
 ├── .env.example              # Optional smart-model configuration
+├── scripts/switch_local_proof.sh # One command: local Switch stack + Mattermost proof post
 ├── docs/LIVE_SWITCH_SETUP.md # Register an agent + find the room UUID on a real server
 └── docs/adr/                 # Generated ADRs + auto-generated index
 ```
@@ -216,7 +217,72 @@ Full walkthrough, including the exact `curl` calls and troubleshooting:
 
 The agent claims the room with `connect_to_room`, so `post_message` and `read_context` operate on that room implicitly, exactly as the Switch operations API expects. Run one instance per agent id: a second claim takes the room over and the two evict each other.
 
-### 6. Or install it from the Switch template
+### 6. Run a real Switch server locally (WSL2 + Docker)
+
+No hosted account needed: Switch ships a standalone Docker stack with Postgres,
+`switch-core`, a Mattermost bridge, and the Gateway. On Windows, run it inside
+WSL2 (Docker Desktop works too, but a plain `docker.io` install in the distro is
+enough).
+
+**Prerequisites**
+* WSL2 distro with `docker` + the Compose v2 plugin (`docker compose version`)
+* ~6 GB RAM for the WSL VM (Mattermost is the heavy one) and ~10 GB disk
+* Ports 8065 (Mattermost) and 3000 (Gateway) free on the host
+
+WSL defaults to 50% of RAM but an existing `.wslconfig` can cap it far lower;
+a 1 GB cap makes Mattermost OOM and the VM appear to hang. Set something like:
+```ini
+# C:\Users\<you>\.wslconfig
+[wsl2]
+memory=6GB
+swap=2GB
+```
+
+**Steps**
+```bash
+# inside WSL, once
+git clone https://github.com/sandbox-quantum/switch.git /root/switch
+cd /root/switch && cp .env.example .env
+bash deploy/local/generate-env-secrets.sh .env local
+```
+```bash
+# from this repo: start the stack, wait for Mattermost, post one real message
+bash scripts/switch_local_proof.sh
+```
+The script starts the `collab` + `gateway` profiles, waits for
+`/api/v4/system/ping`, logs in as the seeded admin, creates
+`#architecture-review`, posts one ADR-style message, and reads it back:
+```text
+== room #architecture-review
+created #architecture-review (h9wzs5sczffk8ejei75q4bypuo)
+== verifying
+channel: h9wzs5sczffk8ejei75q4bypuo
+created_at(ms): 1794088914518
+chars: 500
+posted: http://127.0.0.1:8065/switch/pl/8qsxk58b1f84jc69pjy1cb4xqy
+```
+Overrides: `SWITCH_DIR` (default `/root/switch`), `MATTERMOST_CHANNEL`,
+`MATTERMOST_HOST_PORT`. Then open `http://localhost:8065` and sign in as `user`
+with `MATTERMOST_USER_PASSWORD` from the Switch `.env` to see the room in the UI.
+
+To put the agent in that room, register it against `switch-core` and point the
+client at the bridge as described in
+[`docs/LIVE_SWITCH_SETUP.md`](docs/LIVE_SWITCH_SETUP.md).
+
+| Symptom | Cause / fix |
+|:--|:--|
+| `wsl` commands hang, `WSL/Service/WSAETIMEDOUT` | VM is out of memory: raise `memory` in `.wslconfig`, then `wsl --shutdown` |
+| Containers exit with 255 shortly after `up` | Same OOM cause; check `dmesg` for the oom-killer |
+| `Invalid or expired session` from the API | Mattermost returns the token in the `Token` **header**, not the JSON body |
+| Port already in use | Change `MATTERMOST_HOST_PORT` / `GATEWAY_HOST_PORT` in the Switch `.env` |
+
+Stop everything with:
+```bash
+cd /root/switch && docker compose --env-file .env \
+  -f deploy/local/standalone-docker-compose.yml --profile collab --profile gateway down
+```
+
+### 7. Or install it from the Switch template
 1. Open **Switch Console** → **Agents** → **Install Template**.
 2. Select `switch-template.yaml`.
 
