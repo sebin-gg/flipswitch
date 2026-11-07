@@ -73,9 +73,12 @@ to rush — if a line feels tight, drop a word rather than speeding up.
 
 ## 🎬 The 60-second cut: chapters, captions, narration
 
-`demo_video/flipswitch-demo-60s-narrated.mp4` is the portal cut: **60.000s**, 1800 frames at 30 fps,
-with the five step captions burned in and a voiceover underneath. It is also published as a release
-asset: <https://github.com/sebin-gg/flipswitch/releases/tag/demo-video>.
+`demo_video/flipswitch-demo-60s-music.mp4` is the portal cut: **60.000s**, 1800 frames at 30 fps,
+with the five step captions burned in, a voiceover underneath, and a quiet music bed. It is also
+published as a release asset: <https://github.com/sebin-gg/flipswitch/releases/tag/demo-video>.
+
+`flipswitch-demo-60s-narrated.mp4` is the same cut without the bed; `flipswitch-demo-60s.mp4` is
+silent, for recording your own voiceover.
 
 Chapter times, measured from the rendered file (caption band changes plus the end-card fade):
 
@@ -111,8 +114,13 @@ up, and letting it sit reads better than talking across it.
 
 ### Voice and mix notes
 
-- The shipped voice is synthesized (Edge `en-US-AndrewNeural`, +4% rate): 48 kHz mono AAC, **−16.3 LUFS**
+- The shipped voice is synthesized (Edge `en-US-AndrewNeural`, +4% rate): 48 kHz AAC, **−16.3 LUFS**
   integrated, true peak limited, 0.8s fade-out.
+- The music is an original synthesized pad (numpy sines, Am7–Fmaj7–Cmaj7–G6, 7.5s per chord, stereo
+  detune), so there is no licensing or attribution requirement. It sits about 16 dB under the voice
+  (`−32.8 dB` RMS in the gaps) and is ducked a further ~11 dB whenever narration is playing
+  (`−44.6 dB` under voice), fading out over the last 3.5s. Final mix: **−16.1 LUFS** integrated,
+  true peak **−4.0 dBFS**.
 - "A-D-R" and "Timescale" are spelled that way so the synthesizer pronounces them cleanly; the screen
   still shows `ADR` and `TimescaleDB`.
 - To record a human take, keep the start times above and read at roughly 2.2 words/second. Mux without
