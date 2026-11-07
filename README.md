@@ -1,7 +1,7 @@
 # 🏛️ Switch ADR Architect: Multiplayer Architecture Decision Records in Team Chat
 
 > **Built for the "Flip the Switch" Hackathon** (WeMakeDevs × DevTools Academy)
-> *Transforming casual chat debates into authoritative Git ADRs through open-source Switch infrastructure.*
+> *Transforming casual chat debates into durable, reviewable Git ADRs through open-source Switch infrastructure.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Switch Agent Protocol](https://img.shields.io/badge/Switch-Agent%20Protocol-FF895E)](https://github.com/sandbox-quantum/switch)
@@ -18,6 +18,9 @@ A narration-only cut and the release notes are on the [demo-video release](https
 It is a real run of `python main.py --simulate`: the team debates Postgres vs ClickHouse in
 `#architecture-review`, `@architect` is invoked, the agent asks for the missing rollback plan, then
 writes the ADR and commits it to git. No Docker, no API key, no hosted Switch instance required.
+
+The run uses the repo's embedded Switch-compatible bridge so it is reproducible anywhere; for a
+hosted room on a real bridge, follow [`docs/LIVE_SWITCH_SETUP.md`](docs/LIVE_SWITCH_SETUP.md).
 
 ---
 
@@ -49,7 +52,7 @@ This project **cannot function without Switch**:
 * **Multi-Human, Single-Agent Room State**: Individual terminal agents (Claude Code, Cursor, Copilot) are trapped in one user's session. Switch provides the room topology where several humans debate and one agent listens with shared context.
 * **Bi-directional Agent Protocol**: The agent relies on Switch's SSE event stream (`GET /agents/{id}/events`) for room events and the operations API (`POST /agents/{id}/ops/...`) to claim a room, read context, and post replies.
 * **Connection Liveness**: A client-generated connection id plus a 2-second heartbeat (`POST /agents/{id}/connection/beat`) keeps the agent live; the client resumes from its cursor (`Last-Event-ID`) after a dropped socket.
-* **Channel Agnostic**: Runs identically across **Mattermost** (bundled with Switch), **Slack**, **Discord**, or **Teams** without changing agent code.
+* **Channel Agnostic**: Designed to run unchanged across **Mattermost** (bundled with Switch), **Slack**, **Discord**, or **Teams** — the agent contains no channel-specific code; Switch owns the bridge.
 * **Automation without a separate bot platform**: Switch resolves the room, participant names, addressing (`@architect`), and identity — the agent only implements its ADR workflow.
 
 ---
