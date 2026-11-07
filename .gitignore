@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv/
+env/
+venv/
+test_sandbox/
+.pytest_cache/
+.coverage
+htmlcov/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
