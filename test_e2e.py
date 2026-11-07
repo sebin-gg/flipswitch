@@ -10,6 +10,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import switch_simulator
 from switch_simulator import SwitchHandler, create_server, send_room_message
 from switch_client import UUID_RE, SwitchAgentClient
 from agent_orchestrator import ADRArchitectAgent
@@ -526,6 +527,101 @@ class TestSwitchProtocolContract(unittest.TestCase):
         adr_files = [f for f in (self.test_dir / "docs/adr").glob("*.md") if f.name != "README.md"]
         self.assertTrue(adr_files, "expected an ADR to be written through the strict bridge")
         self.assertIn("docs(adr)", git(self.test_dir, "log", "--oneline").stdout)
+
+
+class StreamGatedHandler(SwitchHandler):
+    """Bridge that only accepts a room claim once the SSE stream is open.
+
+    This is what switch-core does: ``connect_to_room`` on a connection id whose
+    stream has not registered answers 409, and every later room-bound operation
+    answers 400 "Not connected to a room". A client that fires the claim
+    straight after ``start()`` therefore looks connected but is mute.
+    """
+
+    lock = threading.Lock()
+    stream_open = threading.Event()
+    claim_attempts = 0
+    order = []
+
+    @classmethod
+    def reset(cls):
+        with cls.lock:
+            cls.stream_open.clear()
+            cls.claim_attempts = 0
+            cls.order.clear()
+
+    def handle_stream(self, agent_id):
+        with self.lock:
+            self.order.append("stream")
+        self.stream_open.set()
+        return super().handle_stream(agent_id)
+
+    def do_POST(self):
+        path = urlparse(self.path).path
+        if path.endswith("/ops/connect_to_room"):
+            cls = type(self)
+            with cls.lock:
+                # Class-level counter: this handler is instantiated per request,
+                # so `self.claim_attempts += 1` would reset on every attempt.
+                cls.claim_attempts += 1
+                first_attempt = cls.claim_attempts == 1
+                cls.order.append("claim")
+            # Reject before the stream exists, and also reject the first claim
+            # after it: the bridge needs a moment to register the connection.
+            if not self.stream_open.is_set() or first_attempt:
+                return self.respond(
+                    409, {"detail": "connection is not open; reconnect and resume"}
+                )
+        elif path.endswith("/ops/post_message") or path.endswith("/ops/read_context"):
+            agent_id = path.split("/")[2]
+            if not switch_simulator.agent_rooms.get(agent_id):
+                return self.respond(
+                    400,
+                    {"detail": "Not connected to a room. Call connect_to_room first."},
+                )
+        return super().do_POST()
+
+
+class TestConnectToRoomStreamRace(unittest.TestCase):
+    """A claim must not be sent until the event stream has opened, and a 409
+    while the bridge finishes registering has to be retried, not swallowed."""
+
+    ROOM = "0f0c2f6e-6f1e-4b0a-9d63-2c1f0a7b9e11"
+
+    @classmethod
+    def setUpClass(cls):
+        switch_simulator.rooms.clear()
+        switch_simulator.agent_rooms.clear()
+        switch_simulator.agent_connections.clear()
+        StreamGatedHandler.reset()
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), StreamGatedHandler)
+        cls.server.daemon_threads = True
+        cls.bridge_url = f"http://127.0.0.1:{cls.server.server_address[1]}"
+        cls.server_thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.server_thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def test_claim_waits_for_stream_and_retries(self):
+        client = SwitchAgentClient(
+            bridge_url=self.bridge_url, agent_id="race-agent", api_key="test-key"
+        )
+        client.start()
+        try:
+            result = client.connect_to_room(self.ROOM)
+            self.assertEqual(result.get("room_id"), self.ROOM, "claim did not succeed")
+
+            posted = client.post_message(self.ROOM, "Room-bound post after the claim")
+            self.assertTrue(posted, "post_message failed: the claim was not held")
+        finally:
+            client.stop()
+
+        # stream first, then a rejected claim, then the accepted retry
+        self.assertEqual(StreamGatedHandler.order[:3], ["stream", "claim", "claim"])
+        self.assertGreaterEqual(StreamGatedHandler.claim_attempts, 2)
 
 
 if __name__ == "__main__":

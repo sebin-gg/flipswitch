@@ -20,9 +20,11 @@ It is a team tool: engineering workflow, Git-native records, B2B framing.
 
 **<https://github.com/sebin-gg/flipswitch>**
 
-Public. `README.md` §5 covers Switch setup end to end (registration, room UUID, run command)
-and links [`docs/LIVE_SWITCH_SETUP.md`](docs/LIVE_SWITCH_SETUP.md) for a live bridge.
-[`switch-template.yaml`](switch-template.yaml) describes the agent, its room and its addressing policy for a Console install.
+Public. `README.md` §5 covers Switch registration, room UUID and the run command; §6 runs the whole
+standalone stack locally and reproduces the `#adr-review-live` transcript;
+[`docs/LIVE_SWITCH_SETUP.md`](docs/LIVE_SWITCH_SETUP.md) §7 documents custom-agent registration,
+channel-bridged rooms and the addressing policy. [`switch-template.yaml`](switch-template.yaml)
+describes the agent, its room and its addressing policy for a Console install.
 
 ## 4. Demo video link
 
@@ -30,8 +32,11 @@ Published as public release assets (no login, direct playback):
 
 * Music version — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-demo-60s-music.mp4>
 * Narration only — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-demo-60s-narrated.mp4>
+* Live-room cut (silent, captioned) — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-mattermost.mp4>
 
-Both are **60.000s**, 1800 frames, 1280×720, captioned. Release page:
+The first two are **60.000s**, 1800 frames, 1280×720, captioned. The third is **34.7s** and rendered
+from the real `#adr-review-live` transcript recorded against the local Switch + Mattermost stack
+(no narration; no screen capture). Release page:
 <https://github.com/sebin-gg/flipswitch/releases/tag/demo-video>.
 
 > **If the form requires YouTube/Loom:** upload `demo_video/flipswitch-demo-60s-music.mp4`
@@ -60,9 +65,20 @@ without adopting another documentation tool.
 channel-specific code in the agent — the Python sources contain no Slack/Discord/Mattermost/Teams
 strings at all — so the room's channel comes entirely from whichever bridge Switch is running.
 
-Honest caveat: no hosted Switch instance was available, so the recorded demo runs against the repo's
-embedded Switch-compatible bridge. The client implements the documented operations end to end, but
-it was not recorded against a hosted room; `docs/LIVE_SWITCH_SETUP.md` covers that path.
+**Verified against a real stack, not only the simulator.** A standalone Switch deployment
+(`switch-core` + the bundled Mattermost 11.9, run on WSL2/Docker) was provisioned locally; the agent
+was registered as a custom client with `POST /agents` (`connector_type: custom`,
+`connection_model: always_on`), the Mattermost channel `#adr-review-live` was bridged into the room
+`18b14137-b31e-4544-9b28-9bb4fa2ad1d3`, and it answered a teammate's `@architect` mention, asked for
+the missing rollback plan, then posted `Decision recorded` and committed
+`docs/adr/0002-i-propose-postgres-16-with-timescaledb-mature-operators.md` in a scratch clone. That
+conversation is reproduced word-for-word in the README, and getting there surfaced two real defects
+that are fixed in the repo: a claim sent before the SSE stream registered (409/400, silent), and
+title truncation mid-word.
+
+Caveat on the video only: the 60s cut is rendered from `python main.py --simulate` so it needs no
+Docker or network, and was not screen-captured from the hosted room. The live-room evidence in the
+repo is the transcript, the room UUID and the generated ADR.
 
 Also note: `switch-template.yaml` describes the agent, room and addressing policy for a Console
 install with a selectable runtime (`custom`/`python` among them); it does not launch this Python
@@ -125,7 +141,7 @@ git clone https://github.com/sebin-gg/flipswitch.git
 cd flipswitch
 pip install -r requirements.txt
 python main.py --simulate          # embedded Switch bridge + full demo, no Docker/Postgres
-python -m unittest test_e2e.py -v  # 6 tests incl. protocol contract + duplicate-ADR guards
+python -m unittest test_e2e.py -v  # 7 tests incl. protocol contract, claim race, duplicate-ADR guards
 ```
 
 Expected: the demo prints the room conversation, the agent's clarifying question, the teammate's
@@ -136,7 +152,7 @@ rollback answer, and a new MADR file committed to `docs/adr/`.
 | Criterion | Where it shows |
 |:--|:--|
 | Switch centrality (30%) | SSE `/events`, heartbeat, `connect_to_room`, `read_context`, `post_message`; no fallback bot API |
-| Technical execution / reproducibility (25%) | 6 passing E2E tests, CI on three Python versions, zero-dependency simulator, graceful LLM fallback |
+| Technical execution / reproducibility (25%) | 7 passing E2E tests, CI on three Python versions, zero-dependency simulator, graceful LLM fallback |
 | Creativity / impact (25%) | Turns ephemeral chat consensus into durable, indexed, versioned architecture memory |
 | Presentation / docs (20%) | README architecture + protocol notes, 30s/60s narrated demo cuts, blog post |
 

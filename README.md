@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Switch Agent Protocol](https://img.shields.io/badge/Switch-Agent%20Protocol-FF895E)](https://github.com/sandbox-quantum/switch)
 [![MADR Standard](https://img.shields.io/badge/Standard-MADR%203.0-blue)](https://adr.github.io/madr/)
-[![Tests](https://img.shields.io/badge/Tests-6%20passing-brightgreen)](test_e2e.py)
+[![Tests](https://img.shields.io/badge/Tests-7%20passing-brightgreen)](test_e2e.py)
 
 ---
 
@@ -21,6 +21,33 @@ writes the ADR and commits it to git. No Docker, no API key, no hosted Switch in
 
 The run uses the repo's embedded Switch-compatible bridge so it is reproducible anywhere; for a
 hosted room on a real bridge, follow [`docs/LIVE_SWITCH_SETUP.md`](docs/LIVE_SWITCH_SETUP.md).
+
+[▶ Watch the live-room cut](https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-mattermost.mp4)
+— 34.7s, captioned (silent), rendered from the room's own transcript rather than a script.
+
+It has also been run against a real Switch stack: standalone `switch-core` + the bundled Mattermost,
+with `architect` registered as a custom protocol client. In `#adr-review-live` the agent read the
+room, asked for the missing rollback plan, then posted `Decision recorded` and committed
+`docs/adr/0002-i-propose-postgres-16-with-timescaledb-mature-operators.md` in a scratch clone. The
+captured room is reproduced below; §6 is the command to rebuild that stack locally.
+
+```text
+[#adr-review-live]
+user:  We need to pick the primary datastore for the telemetry pipeline before Friday's review.
+user:  I propose Postgres 16 with TimescaleDB: mature operators, plain SQL for dashboards, one system to run.
+user:  The trade-off is vacuum tuning and partition maintenance. ClickHouse would ingest faster, but nobody here has run it in production.
+user:  @architect summarize and draft an ADR.
+
+architect: I analyzed the team discussion for "Postgres 16 + TimescaleDB…". Before recording to git,
+           please clarify: what is the rollback or mitigation plan if this decision fails in production?
+
+user:  @architect Rollback plan: if sustained write throughput stays above 50k rows/s for two weeks we move
+       to ClickHouse behind the same writer interface, dual-writing during the migration…
+
+architect: All clarifications received. Decision recorded! 🎉
+           - 📄 Document: docs/adr/0002-i-propose-postgres-16-with-timescaledb-mature-operators.md
+           - 🔀 Git Commit: docs(adr): record ADR-0002: I propose Postgres 16 with TimescaleDB: mature operators
+```
 
 ---
 
@@ -137,7 +164,7 @@ flipswitch/
 ├── agent_orchestrator.py     # Multi-turn state machine, gap loop, Git persistence
 ├── adr_engine.py             # MADR 3.0 renderer + deterministic keyword analysis
 ├── llm_engine.py             # Smart LLM-backed analysis with heuristic fallback
-├── test_e2e.py               # End-to-end, protocol contract, duplicate-guard suite (6 tests)
+├── test_e2e.py               # End-to-end, protocol contract, claim-race, duplicate-guard suite (7 tests)
 ├── requirements.txt          # requests>=2.31.0
 ├── .env.example              # Optional smart-model configuration
 ├── scripts/switch_local_proof.sh # One command: local Switch stack + Mattermost proof post
@@ -300,10 +327,11 @@ Covers:
 3. Smart-engine fallback when no API key exists and when the provider is unreachable.
 4. Protocol contract: a strict bridge rejects any operation argument outside the published signature (no `room_id` on `post_message`, no `room_id` on named-room context reads) and asserts the client streams from `GET /agents/{id}/events`, never the legacy `/stream` path.
 5. Duplicate guard: after a decision is recorded, follow-up chatter in the same thread creates no new ADR file or commit (it replies “already recorded”), while an explicit `@architect new ADR ...` still records a new decision.
+6. Claim race: against a bridge that 409s a room claim until the SSE stream is registered, the client opens the stream first, retries the claim, and then posts successfully — the failure mode that made the agent look online but mute.
 
 Expected:
 ```text
-Ran 6 tests in ~14s
+Ran 7 tests in ~16s
 OK
 ```
 
