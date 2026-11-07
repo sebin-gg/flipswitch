@@ -92,7 +92,7 @@ class SwitchHandler(BaseHTTPRequestHandler):
             agent_id = parts[2] if len(parts) > 2 else "agent-default"
             self.handle_read_context(agent_id)
         else:
-            self.respond(404, {"error": "Not Found", "path": self.path})
+            self.respond(404, {"error": "Not Found"})
 
     def do_POST(self):
         clean_path = self.path.split("?")[0]
@@ -115,7 +115,7 @@ class SwitchHandler(BaseHTTPRequestHandler):
         elif "/ops/list_rooms" in clean_path:
             self.respond(200, {"result": [{"id": r, "name": r} for r in rooms.keys()]})
         else:
-            self.respond(404, {"error": "Not Found", "path": self.path})
+            self.respond(404, {"error": "Not Found"})
 
     def handle_heartbeat(self, agent_id):
         # read_json_body (not a raw rfile read) so subclasses can inspect the
@@ -224,7 +224,10 @@ class SwitchHandler(BaseHTTPRequestHandler):
     def respond(self, status_code, data):
         payload = json.dumps(data).encode("utf-8")
         self.send_response(status_code)
-        self.send_header("Content-Type", "application/json")
+        # Never let a browser treat an API payload as markup: exact JSON type,
+        # and no MIME sniffing.
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("Connection", "close")
         self.end_headers()
