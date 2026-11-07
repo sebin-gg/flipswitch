@@ -37,7 +37,7 @@ For the hackathon, I built **Switch ADR Architect**: an autonomous architecture 
 
 Here is how the workflow runs:
 
-1. **Ambient Room Listening**: The agent sits in `#architecture-review` through Switch's SSE event bus (`/stream`).
+1. **Ambient Room Listening**: The agent sits in `#architecture-review` through Switch's SSE event bus (`/events`).
 2. **Context Synthesis**: When someone types `@architect summarize our discussion and draft an ADR`, the agent queries Switch's `read_context` operation to parse the multi-human discussion.
 3. **The Intelligent Guardrail**: The agent doesn't just blindly summarize. It acts like a real Staff Architect: it scans for missing critical trade-offs. If the team forgot to specify a rollback plan or negative consequences, it asks:
    > *"I analyzed your discussion on TimescaleDB. Before committing to git, what is our rollback plan if migration fails?"*
@@ -52,10 +52,12 @@ Here is how the workflow runs:
 
 ### How Switch Makes It Possible
 
-Switch ADR Architect is not a stateless webhook bot. It is a genuine teammate powered by Switch's wire protocol:
+Switch ADR Architect is not a stateless webhook bot. It is a genuine teammate powered by Switch's Agent Protocol:
 
 * **Single Connection, Multi-Human Awareness**: Through Switch, multiple engineers (Alice, Bob, Charlie) interact with one shared agent session without session collisions.
-* **Persistent Connection State**: The agent maintains persistent connection IDs and automated 2-second heartbeats (`/connection/beat`) to survive network fluctuations.
+* **Persistent Connection State**: The agent keeps a client-generated connection id, resumes from its event cursor (`Last-Event-ID`), and beats every 2 seconds (`/connection/beat`) so a dropped socket does not kill the teammate.
+* **Operations, Not Screenscraping**: `connect_to_room`, `read_context`, and `post_message` are real protocol operations; the room and thread come from Switch, not from parsing chat text.
+* **A smarter drafter, with a floor**: the ADR synthesis runs through an OpenAI-compatible model when a key is configured, and falls back to a deterministic keyword engine offline so judges can reproduce the demo with zero setup.
 * **Open Wire Standards**: Because Switch is open-source and self-hostable, your team's proprietary architecture discussions never leak to third-party bot platforms.
 
 ---
@@ -65,11 +67,13 @@ Switch ADR Architect is not a stateless webhook bot. It is a genuine teammate po
 The entire project is open-source and designed to run out of the box in 60 seconds with an embedded Switch simulator:
 
 ```bash
-git clone https://github.com/your-username/flipswitch.git
+git clone https://github.com/sebin-gg/flipswitch.git
 cd flipswitch
 pip install -r requirements.txt
 python main.py --simulate
 ```
+
+To use the smarter model, set `ADR_API_KEY` (and optionally `ADR_MODEL` / `ADR_LLM_BASE_URL`) before running; otherwise the offline engine takes over automatically.
 
 Run the automated test suite:
 ```bash

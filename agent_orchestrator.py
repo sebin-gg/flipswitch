@@ -149,10 +149,10 @@ class ADRArchitectAgent:
             if proposal.title in ["System Architecture Decision", "Architectural Decision Proposal"] and clean_body:
                 for line in clean_body.splitlines():
                     if any(w in line.lower() for w in ["database", "storage", "auth", "cache", "api", "framework", "queue", "architecture"]):
-                        proposal.title = line.strip()[:80]
+                        proposal.title = line.strip()[:80].rstrip(".")
                         break
                 else:
-                    proposal.title = clean_body[:50]
+                    proposal.title = clean_body[:50].rstrip(".")
 
             if proposal.open_questions:
                 self.active_state[thread_id] = proposal

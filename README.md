@@ -1,12 +1,12 @@
 # 🏛️ Switch ADR Architect: Multiplayer Architecture Decision Records in Team Chat
 
-> **Built for the "Flip the Switch" Hackathon** (WeMakeDevs × DevTools Academy)  
-> *Transforming casual chat debates into authoritative, peer-reviewed Git ADRs through open-source Switch infrastructure.*
+> **Built for the "Flip the Switch" Hackathon** (WeMakeDevs × DevTools Academy)
+> *Transforming casual chat debates into authoritative Git ADRs through open-source Switch infrastructure.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Switch Compatible](https://img.shields.io/badge/Switch-Wire%20Protocol%20v6-FF895E)](https://github.com/sandbox-quantum/switch)
+[![Switch Agent Protocol](https://img.shields.io/badge/Switch-Agent%20Protocol-FF895E)](https://github.com/sandbox-quantum/switch)
 [![MADR Standard](https://img.shields.io/badge/Standard-MADR%203.0-blue)](https://adr.github.io/madr/)
-[![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen)](test_e2e.py)
+[![Tests](https://img.shields.io/badge/Tests-3%20passing-brightgreen)](test_e2e.py)
 
 ---
 
@@ -16,17 +16,18 @@ Engineering teams make critical architectural decisions every day in chat channe
 
 **Then consensus evaporates.** Nobody writes the Architecture Decision Record (ADR), nobody documents the rollback strategy, and six months later the team asks: *"Why did we choose this database again?"*
 
-Traditional ADR tools require developers to leave chat, open terminal, remember Markdown templates, and write files in isolation.
+Traditional ADR tools require developers to leave chat, open a terminal, remember Markdown templates, and write files in isolation.
 
 ## 🚀 The Solution: Switch ADR Architect
 
-**Switch ADR Architect** brings an active, autonomous AI architect into your team chat room using **Switch**. 
+**Switch ADR Architect** brings an active AI architect into your team chat room using **Switch**.
 
-1. **Ambient Room Awareness**: The agent sits in `#architecture` alongside engineers via Switch.
-2. **Context Synthesis**: When tagged (`@architect summarize and draft ADR`), the agent reads the room's discussion history via Switch's `read_context` operation.
-3. **Guardrail Gap Detection**: It detects missing architectural requirements — specifically **rollback strategies**, **operational overheads**, and **alternative trade-offs**.
-4. **Chat-Native Clarification**: It asks clarifying questions directly in the chat thread.
-5. **Autonomous Git Persistence**: Once clarified or approved, it compiles an official [MADR 3.0](https://adr.github.io/madr/) Markdown document, updates `docs/adr/README.md`, and commits the decision directly to the Git repository.
+1. **Ambient Room Awareness**: The agent sits in `#architecture-review` alongside engineers via Switch.
+2. **Context Synthesis**: When tagged (`@architect summarize and draft an ADR`), the agent reads the room's timeline through Switch's `read_context` operation.
+3. **Guardrail Gap Detection**: It detects missing architectural requirements — **rollback strategies**, **operational trade-offs**, and **unexamined alternatives**.
+4. **Chat-Native Clarification**: It asks clarifying questions directly in the chat thread and waits for a teammate's answer.
+5. **Autonomous Git Persistence**: Once clarified or approved, it compiles an official [MADR 3.0](https://adr.github.io/madr/) document, updates `docs/adr/README.md`, and commits the decision directly to Git.
+6. **Smarter synthesis**: ADR text is produced by an LLM through any OpenAI-compatible endpoint when `ADR_API_KEY` is set. Without a key — or if the provider fails — the agent degrades to a deterministic keyword engine, so the demo and tests never require network access.
 
 ---
 
@@ -34,9 +35,11 @@ Traditional ADR tools require developers to leave chat, open terminal, remember 
 
 This project **cannot function without Switch**:
 
-* **Multi-Human, Single-Agent Room State**: Individual AI agents (Claude Code, Cursor, Copilot) are trapped in single-user terminals. Switch provides the room topology where multiple humans (Alice, Bob, Charlie) debate and a single agent listens and responds in shared context.
-* **Bi-directional Wire Protocol**: The agent relies on Switch's Server-Sent Events (SSE) stream (`GET /agents/{id}/stream`) for real-time room notifications and HTTP operations (`POST /agents/{id}/ops/post_message`, `POST /agents/{id}/ops/read_context`) to interact with the room.
+* **Multi-Human, Single-Agent Room State**: Individual terminal agents (Claude Code, Cursor, Copilot) are trapped in one user's session. Switch provides the room topology where several humans debate and one agent listens with shared context.
+* **Bi-directional Agent Protocol**: The agent relies on Switch's SSE event stream (`GET /agents/{id}/events`) for room events and the operations API (`POST /agents/{id}/ops/...`) to claim a room, read context, and post replies.
+* **Connection Liveness**: A client-generated connection id plus a 2-second heartbeat (`POST /agents/{id}/connection/beat`) keeps the agent live; the client resumes from its cursor (`Last-Event-ID`) after a dropped socket.
 * **Channel Agnostic**: Runs identically across **Mattermost** (bundled with Switch), **Slack**, **Discord**, or **Teams** without changing agent code.
+* **Automation without a separate bot platform**: Switch resolves the room, participant names, addressing (`@architect`), and identity — the agent only implements its ADR workflow.
 
 ---
 
@@ -44,38 +47,38 @@ This project **cannot function without Switch**:
 
 ```mermaid
 flowchart LR
-    subgraph TeamChat ["💬 Team Collaboration Platform"]
+    subgraph TeamChat ["💬 Team Chat"]
         Alice["👩‍💻 Alice (Dev)"]
         Bob["👨‍💻 Bob (Lead)"]
         Charlie["👨‍💻 Charlie (SRE)"]
     end
 
-    subgraph SwitchInfra ["⚡ Switch Open-Source Infrastructure"]
-        Bridge["Switch Bridge Gateway"]
-        SSE["SSE Event Bus (/stream)"]
+    subgraph SwitchInfra ["⚡ Switch"]
+        Bridge["Agent Bridge"]
+        SSE["SSE event stream (/events)"]
         Ops["Operations API (/ops)"]
     end
 
-    subgraph AgentCore ["🤖 Switch ADR Architect Agent"]
-        Client["SwitchAgentClient (Heartbeat + SSE)"]
-        Orchestrator["Agent Orchestrator State Machine"]
-        Engine["ADR Engine (MADR 3.0 Parser)"]
+    subgraph AgentCore ["🤖 Switch ADR Architect"]
+        Client["SwitchAgentClient (SSE + heartbeat)"]
+        Orchestrator["Agent Orchestrator state machine"]
+        Engine["Smart ADR Engine (LLM + fallback)"]
     end
 
     subgraph Repo ["📁 Git Repository"]
         ADRDoc["docs/adr/0001-*.md"]
         ADRIndex["docs/adr/README.md"]
-        GitCommit["git commit -m 'docs(adr)...'"]
+        GitCommit["git commit 'docs(adr): ...'"]
     end
 
     Alice & Bob & Charlie <--> Bridge
     Bridge --> SSE
     Ops --> Bridge
-    SSE -->|Domain Events| Client
-    Client -->|HTTP Operations| Ops
+    SSE -->|Domain events| Client
+    Client -->|HTTP operations| Ops
     Client <--> Orchestrator
     Orchestrator <--> Engine
-    Orchestrator -->|Commit & Record| Repo
+    Orchestrator -->|Record & commit| Repo
 ```
 
 ---
@@ -91,20 +94,21 @@ Alice:   "Alternative was ClickHouse, but team has zero ClickHouse operations ex
 
 Alice:   "@architect summarize our discussion and draft an ADR."
 
-Architect: "🏛️ ADR Architect: I analyzed your discussion on Selection of Database.
+Architect: "🏛️ I analyzed the team discussion for Selection of Database for System Architecture.
             Before recording to git, please clarify:
-            1. What is the rollback plan if TimescaleDB encounters failure in production?"
+            1. What is the rollback or mitigation plan if this decision encounters failure in production?"
 
-Bob:     "@architect In case of failure, our rollback plan is falling back to managed Aurora read-replicas."
+Bob:     "@architect In case of failure, our rollback strategy is falling back to managed Aurora read-replicas."
 
-Architect: "🏛️ ADR Architect: All clarifications received. Decision recorded! 🎉
-            - 📄 Document: docs/adr/0001-selection-of-database-for-system-architecture.md
-            - 🔀 Git Commit: docs(adr): record ADR-0001: Selection of Database
-            
-            ### Final Decision Summary:
-            > Bob: I propose PostgreSQL with TimescaleDB...
-            Rollback Strategy: Revert DNS to Aurora read-replica."
+Architect: "🏛️ All clarifications received. Decision recorded! 🎉
+            - 📄 Document: docs/adr/0002-selection-of-database-for-system-architecture.md
+            - 🔀 Git Commit: docs(adr): record ADR-0002: Selection of Database for System Architecture
+
+            Rollback Strategy: In case of failure, our rollback strategy is falling back to managed
+            Aurora read-replicas."
 ```
+
+The agent also ignores follow-up chatter in a thread after recording an ADR (for 5 minutes) so one debate cannot produce duplicate records. Say `@architect new ADR ...` to start a fresh decision in the same room.
 
 ---
 
@@ -112,17 +116,17 @@ Architect: "🏛️ ADR Architect: All clarifications received. Decision recorde
 
 ```text
 flipswitch/
-├── switch-template.yaml      # Official Switch Agent Template (v2 specification)
-├── main.py                   # CLI entrypoint (Demo, Interactive, and Live modes)
-├── switch_client.py          # Switch Wire Protocol client (SSE down, HTTP ops up)
-├── switch_simulator.py       # Zero-dependency Switch Mock Bridge for instant evaluation
-├── agent_orchestrator.py     # Multi-turn state machine & Git persistence manager
-├── adr_engine.py             # MADR 3.0 parser, gap detector, and markdown renderer
-├── test_e2e.py               # Automated end-to-end test suite
-├── requirements.txt          # Minimal dependency declaration (requests)
-└── docs/
-    └── adr/                  # Target destination for generated ADRs
-        └── README.md         # Auto-generated table of contents
+├── switch-template.yaml      # Official Switch agent template (v2) for Switch Console
+├── main.py                   # CLI: --simulate, --interactive, --embedded, live mode
+├── switch_client.py          # Switch Agent Protocol client (SSE /events, heartbeat, ops)
+├── switch_simulator.py       # Zero-dependency mock Switch bridge for instant evaluation
+├── agent_orchestrator.py     # Multi-turn state machine, gap loop, Git persistence
+├── adr_engine.py             # MADR 3.0 renderer + deterministic keyword analysis
+├── llm_engine.py             # Smart LLM-backed analysis with heuristic fallback
+├── test_e2e.py               # End-to-end test suite (3 tests)
+├── requirements.txt          # requests>=2.31.0
+├── .env.example              # Optional smart-model configuration
+└── docs/adr/                 # Generated ADRs + auto-generated index
 ```
 
 ---
@@ -131,54 +135,96 @@ flipswitch/
 
 ### Prerequisites
 * Python 3.10+
-* Git installed and configured locally
+* Git installed and configured locally (`user.name` / `user.email`)
 
 ### 1. Installation
 ```bash
-git clone https://github.com/your-username/flipswitch.git
+git clone https://github.com/sebin-gg/flipswitch.git
 cd flipswitch
 pip install -r requirements.txt
 ```
 
-### 2. Run Instant Automated Demo (No External Setup Required)
-To see the full collaborative room discussion, question-asking, and Git commit executed live:
+### 2. Run the instant demo (no external setup)
 ```bash
 python main.py --simulate
 ```
-*Spins up an embedded Switch Bridge, streams the conversation between Alice, Bob, and the Architect, and commits the generated ADR to your repository.*
+This starts an embedded mock Switch bridge, streams a real room discussion between Alice, Bob, and Charlie, has Alice summon `@architect`, answers the rollback question, and commits the generated ADR to your repository.
 
-### 3. Run in Interactive Chat Mode
-Want to chat with the agent yourself in terminal as a team member?
+### 3. Chat with the agent yourself
 ```bash
 python main.py --interactive
 ```
-*Type messages like `We should use Redis for session caching` followed by `@architect create ADR`.*
+Type messages as a teammate (for example `We should use Redis for session caching`) and then `@architect create ADR`. Type `exit` to stop.
 
-### 4. Connect to Live Switch Instance (Mattermost / Slack / Discord)
-If you have a live Switch server running (`http://localhost:8000` or hosted):
+### 4. Enable the smarter model (optional)
+The agent works offline with heuristics. To let an LLM synthesize the ADR:
 ```bash
-python main.py --bridge-url http://localhost:8000 --agent-id architect --api-key YOUR_SWITCH_KEY --room "#architecture"
+export ADR_API_KEY=sk-...            # or OPENAI_API_KEY
+export ADR_MODEL=gpt-4.1             # any chat-completions model
+export ADR_LLM_BASE_URL=https://api.openai.com/v1   # or any compatible endpoint
+python main.py --simulate
 ```
+Check which engine is active with `python main.py --list-models`. Force the offline engine with `--no-llm` (useful for judging and CI). See `.env.example`.
 
-Or deploy using the included template with Switch Console:
-1. Open **Switch Console**.
-2. Go to **Agents** → **Install Template**.
-3. Select `switch-template.yaml`.
+### 5. Connect to a live Switch instance
+1. Open **Switch Console** and connect your Mattermost/Slack/Discord bridge, or self-host the Switch core.
+2. Create a room (for example `Architecture & ADRs`) and make sure the agent account is a **member** of it.
+3. Register the agent once and keep the returned API key:
+   ```bash
+   curl -X POST "$BRIDGE_URL/agents/register-known" \
+     -H "Authorization: Bearer $REGISTRATION_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"agent_type":"always_on","name":"architect","description":"ADR Architect"}'
+   ```
+4. Run the agent against the bridge (not the Gateway) base URL:
+   ```bash
+   python main.py --bridge-url "$BRIDGE_URL" --agent-id architect \
+     --api-key "$SWITCH_AGENT_KEY" --room "<room-uuid-or-name>"
+   ```
+   The client resolves a room name to its id via `list_rooms`; a room UUID is the most reliable value.
+5. In the room, debate a decision and mention `@architect summarize and draft an ADR`.
+
+The agent claims the room with `connect_to_room`, so `post_message` and `read_context` operate on that room implicitly, exactly as the Switch operations API expects.
+
+### 6. Or install it from the Switch template
+1. Open **Switch Console** → **Agents** → **Install Template**.
+2. Select `switch-template.yaml`.
 
 ---
 
 ## 🧪 Running Automated Tests
 
-Run the end-to-end verification test suite:
 ```bash
-python -m unittest test_e2e.py
+python -m unittest test_e2e.py -v
 ```
 
-Output:
+Covers:
+1. Bridge health and connection.
+2. Full flow: discussion → gap question → teammate answer → MADR file → index update → git commit.
+3. Smart-engine fallback when no API key exists and when the provider is unreachable.
+
+Expected:
 ```text
-Ran 2 tests in 5.3s
+Ran 3 tests in ~7s
 OK
 ```
+
+The suite uses an ephemeral port and a project-local `test_sandbox/` directory, so it is portable and leaves no state behind.
+
+---
+
+## 🔍 Protocol Notes (why the client is written this way)
+
+| Concern | Implementation |
+|:--|:--|
+| Downstream | `GET /agents/{agent_id}/events?connection_id=…&scope=all&filter=all` |
+| Upstream | `POST /agents/{agent_id}/ops/{operation}` with `X-Switch-Connection-Id` |
+| Liveness | `POST /agents/{agent_id}/connection/beat` every 2s; 404/409 reopens the stream |
+| Resume | Client keeps `Last-Event-ID` / `cursor` across reconnects |
+| Room binding | `connect_to_room` then implicit room on `post_message` / `read_context` |
+| Threads | `read_context` threads are flattened oldest-first; replies use the real message id |
+
+`switch_simulator.py` mirrors the same endpoints, including `/events`, heartbeats, room binding, and thread-shaped `read_context` responses, so the demo exercises the production code path rather than a mock shortcut.
 
 ---
 
