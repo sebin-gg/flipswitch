@@ -68,7 +68,7 @@ def send_room_message(room_id, sender_name, body, addressed=False, thread_id=Non
         print(line.encode(encoding, "replace").decode(encoding, "replace"))
 
     event = StreamEvent("message", message, id=str(sequence))
-    for conn in list(agent_connections.values()):
+    for conn in agent_connections.values():
         conn["queue"].put(event)
 
 
