@@ -22,8 +22,10 @@ writes the ADR and commits it to git. No Docker, no API key, no hosted Switch in
 The run uses the repo's embedded Switch-compatible bridge so it is reproducible anywhere; for a
 hosted room on a real bridge, follow [`docs/LIVE_SWITCH_SETUP.md`](docs/LIVE_SWITCH_SETUP.md).
 
-[▶ Watch the live-room cut](https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-mattermost.mp4)
-— 34.7s, captioned (silent), rendered from the room's own transcript rather than a script.
+[▶ Watch the live-room cut](https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-browser-narrated.mp4)
+— 22s, 1280×720, narrated; a real headless-Chrome screen capture of the Mattermost room, no script
+([silent cut](https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-browser.mp4),
+[transcript cut](https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-mattermost-narrated.mp4)).
 
 It has also been run against a real Switch stack: standalone `switch-core` + the bundled Mattermost,
 with `architect` registered as a custom protocol client. In `#adr-review-live` the agent read the

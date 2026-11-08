@@ -32,11 +32,14 @@ Published as public release assets (no login, direct playback):
 
 * Music version — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-demo-60s-music.mp4>
 * Narration only — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-demo-60s-narrated.mp4>
-* Live-room cut (silent, captioned) — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-mattermost.mp4>
+* Live browser capture (narrated) — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-browser-narrated.mp4>
+* Live browser capture (silent) — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-browser.mp4>
+* Live transcript cut (narrated, captioned) — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-mattermost-narrated.mp4>
+* Live transcript cut (silent) — <https://github.com/sebin-gg/flipswitch/releases/download/demo-video/flipswitch-live-mattermost.mp4>
 
-The first two are **60.000s**, 1800 frames, 1280×720, captioned. The third is **34.7s** and rendered
-from the real `#adr-review-live` transcript recorded against the local Switch + Mattermost stack
-(no narration; no screen capture). Release page:
+The first two are **60.000s**, 1800 frames, 1280×720, captioned. The browser cuts are **22.0s**, a
+real headless-Chrome capture of `#adr-review-live` against the local Switch + Mattermost stack. The
+transcript cuts are **34.7s**, rendered from that room's own transcript. Release page:
 <https://github.com/sebin-gg/flipswitch/releases/tag/demo-video>.
 
 > **If the form requires YouTube/Loom:** upload `demo_video/flipswitch-demo-60s-music.mp4`
